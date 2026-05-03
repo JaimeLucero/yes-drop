@@ -27,30 +27,32 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
   )
   const [time, setTime] = useState({ hours: 9, minutes: 0 })
 
-  // Get current UTC time to prevent scheduling in the past
+  // Get current local time to prevent scheduling in the past
   const now = new Date()
-  const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-  const currentUTCHours = now.getUTCHours()
-  const currentUTCMinutes = now.getUTCMinutes()
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const currentLocalHours = now.getHours()
+  const currentLocalMinutes = now.getMinutes()
 
   // Check if selected time is in the past
   const isTimeInPast = date &&
-    date.getTime() === todayUTC.getTime() &&
-    (time.hours < currentUTCHours || (time.hours === currentUTCHours && time.minutes <= currentUTCMinutes))
+    date.getTime() === todayLocal.getTime() &&
+    (time.hours < currentLocalHours || (time.hours === currentLocalHours && time.minutes <= currentLocalMinutes))
 
   const handleSchedule = () => {
     if (!date || isTimeInPast) return
 
-    // Create UTC datetime
-    const scheduledDate = new Date(Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
+    // Create local datetime, then convert to UTC for API
+    const localDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
       time.hours,
       time.minutes
-    ))
+    )
 
-    onSchedule(scheduledDate.toISOString())
+    // Convert local time to UTC ISO string
+    const utcDate = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000))
+    onSchedule(utcDate.toISOString())
     onOpenChange(false)
   }
 
@@ -74,7 +76,7 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
           </div>
           
           <div className="space-y-2">
-            <label className="text-sm font-medium">Select Time (UTC)</label>
+            <label className="text-sm font-medium">Select Time</label>
             <div className="flex gap-2">
               <select
                 value={time.hours}
@@ -85,7 +87,7 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 {Array.from({ length: 24 }, (_, i) => {
-                  const isDisabled = date && date.getTime() === todayUTC.getTime() && i <= currentUTCHours
+                  const isDisabled = date && date.getTime() === todayLocal.getTime() && i <= currentLocalHours
                   return (
                     <option key={i} value={i} disabled={isDisabled}>
                       {i.toString().padStart(2, '0')}
@@ -101,9 +103,9 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
               >
                 {[0, 15, 30, 45].map((m) => {
                   const isDisabled = date &&
-                    date.getTime() === todayUTC.getTime() &&
-                    time.hours === currentUTCHours &&
-                    m <= currentUTCMinutes
+                    date.getTime() === todayLocal.getTime() &&
+                    time.hours === currentLocalHours &&
+                    m <= currentLocalMinutes
                   return (
                     <option key={m} value={m} disabled={isDisabled}>
                       {m.toString().padStart(2, '0')}
@@ -114,11 +116,11 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
             </div>
             <div className="space-y-2 text-xs">
               <p className="text-muted-foreground">
-                Current UTC time: {currentUTCHours.toString().padStart(2, '0')}:{currentUTCMinutes.toString().padStart(2, '0')}
+                Current time: {currentLocalHours.toString().padStart(2, '0')}:{currentLocalMinutes.toString().padStart(2, '0')}
               </p>
               {date && (
                 <p className={isTimeInPast ? 'text-red-500 font-medium' : 'text-muted-foreground'}>
-                  Selected: {format(date, 'EEEE, MMMM d, yyyy')} at {time.hours.toString().padStart(2, '0')}:{time.minutes.toString().padStart(2, '0')} UTC
+                  Selected: {format(date, 'EEEE, MMMM d, yyyy')} at {time.hours.toString().padStart(2, '0')}:{time.minutes.toString().padStart(2, '0')}
                   {isTimeInPast && ' (⚠️ in the past)'}
                 </p>
               )}

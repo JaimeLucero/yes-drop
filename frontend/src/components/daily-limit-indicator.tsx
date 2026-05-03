@@ -45,14 +45,16 @@ export function DailyLimitIndicator({ onLimitReached }: DailyLimitIndicatorProps
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-foreground">
-            Resets at {new Date(limit.resets_at).toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              timeZone: 'UTC'
-            })} UTC
+            Resets at {new Date(limit.resets_at).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {new Date(limit.resets_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </p>
           {limit.next_available_date && isAtLimit && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-1">
               Next available: {new Date(limit.next_available_date).toLocaleDateString()}
             </p>
           )}

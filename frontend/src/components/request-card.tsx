@@ -125,7 +125,7 @@ export function RequestCard({ request, onEdit, onDelete, onSchedule, onSendNow }
                   Scheduled For
                 </p>
                 <p className="text-foreground font-medium">
-                  {format(new Date(request.scheduled_send_at), 'PPP p')} UTC
+                  {format(new Date(request.scheduled_send_at), 'PPP p')}
                 </p>
               </div>
             )}
