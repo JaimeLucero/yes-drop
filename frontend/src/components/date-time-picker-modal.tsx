@@ -20,6 +20,7 @@ interface DateTimePickerModalProps {
   initialDateTime?: string | null
   label?: string
   minDate?: Date
+  maxDate?: Date
 }
 
 export function DateTimePickerModal({ 
@@ -28,7 +29,8 @@ export function DateTimePickerModal({
   onDateTimeSelect, 
   initialDateTime,
   label = 'Select Date and Time',
-  minDate 
+  minDate,
+  maxDate 
 }: DateTimePickerModalProps) {
   const [date, setDate] = useState<Date | undefined>(
     initialDateTime ? new Date(initialDateTime) : new Date()
@@ -67,8 +69,10 @@ export function DateTimePickerModal({
     date.getTime() === todayLocal.getTime() &&
     (time.hours < currentLocalHours || (time.hours === currentLocalHours && time.minutes <= currentLocalMinutes))
 
+  const isAfterMax = date && maxDate && date > maxDate
+
   const handleSelect = () => {
-    if (!date || isTimeInPast) return
+    if (!date || isTimeInPast || isAfterMax) return
 
     const localDate = new Date(
       date.getFullYear(),
@@ -98,7 +102,11 @@ export function DateTimePickerModal({
                 mode="single"
                 selected={date}
                 onSelect={setDate}
-                disabled={minDate ? (d) => d < minDate : undefined}
+                disabled={(d) => {
+                  if (minDate && d < minDate) return true
+                  if (maxDate && d > maxDate) return true
+                  return false
+                }}
                 initialFocus
               />
             </div>
@@ -150,9 +158,15 @@ export function DateTimePickerModal({
                 Current time: {currentLocalHours.toString().padStart(2, '0')}:{currentLocalMinutes.toString().padStart(2, '0')} (your timezone)
               </p>
               {date && (
-                <p className={isTimeInPast ? 'text-red-500 font-medium' : ''}>
+                <p className={isTimeInPast || isAfterMax ? 'text-red-500 font-medium' : ''}>
                   Selected: {format(date, 'EEEE, MMMM d, yyyy')} at {time.hours.toString().padStart(2, '0')}:{time.minutes.toString().padStart(2, '0')}
                   {isTimeInPast && ' (⚠️ in the past)'}
+                  {isAfterMax && ' (⚠️ after deadline)'}
+                </p>
+              )}
+              {maxDate && (
+                <p className="text-xs">
+                  Must be before {format(maxDate, 'MMM d, p')}
                 </p>
               )}
             </div>
@@ -163,8 +177,8 @@ export function DateTimePickerModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSelect} disabled={!date || isTimeInPast}>
-            {isTimeInPast ? 'Select future time' : 'Select'}
+          <Button onClick={handleSelect} disabled={!date || isTimeInPast || isAfterMax}>
+            {isTimeInPast ? 'Select future time' : isAfterMax ? 'Select before deadline' : 'Select'}
           </Button>
         </DialogFooter>
       </DialogContent>

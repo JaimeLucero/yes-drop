@@ -23,9 +23,10 @@ interface FollowUpModalProps {
   onOpenChange: (open: boolean) => void
   onSave: (config: FollowUpConfig) => void
   initialConfig?: FollowUpConfig
+  deadlineDateTime?: string
 }
 
-export function FollowUpModal({ open, onOpenChange, onSave, initialConfig }: FollowUpModalProps) {
+export function FollowUpModal({ open, onOpenChange, onSave, initialConfig, deadlineDateTime }: FollowUpModalProps) {
   const [config, setConfig] = useState<FollowUpConfig>(initialConfig || {})
   const [addingType, setAddingType] = useState<'before' | 'after' | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -164,6 +165,7 @@ export function FollowUpModal({ open, onOpenChange, onSave, initialConfig }: Fol
         onOpenChange={setPickerOpen}
         onDateTimeSelect={handleDateTimeSelect}
         label={addingType === 'before' ? "Select Reminder Time (Before Deadline)" : "Select Follow-up Time (After Sending)"}
+        maxDate={addingType === 'before' && deadlineDateTime ? new Date(deadlineDateTime) : undefined}
       />
     </>
   )

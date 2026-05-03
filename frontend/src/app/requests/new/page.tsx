@@ -478,7 +478,7 @@ export default function NewRequestPage() {
           onDateTimeSelect={setDeadlineDateTime}
           initialDateTime={deadlineDateTime}
           label="Set Response Deadline"
-          minDate={new Date(new Date().getTime() + 24 * 60 * 60 * 1000)} // At least 1 day from now
+          minDate={new Date(new Date().getTime() + 60 * 60 * 1000)} // At least 1 hour from now
         />
 
         {/* Follow-up Modal */}
@@ -487,6 +487,7 @@ export default function NewRequestPage() {
           onOpenChange={setFollowUpModalOpen}
           onSave={setFollowUpConfig}
           initialConfig={followUpConfig}
+          deadlineDateTime={deadlineDateTime}
         />
       </main>
     </div>
