@@ -36,6 +36,7 @@ class ApprovalRequestUpdate(BaseModel):
 class ApprovalRequestResponse(BaseModel):
     id: str
     user_id: str
+    requester_email: str | None  # Email of the person who created the request
     approver_email: str | None
     title: str | None
     message: str | None

@@ -1,0 +1,139 @@
+"""
+Supabase database client and repository for approval requests.
+"""
+
+import logging
+from datetime import datetime, timezone
+from supabase import create_client, Client
+from core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# Initialize Supabase client
+supabase: Client = create_client(
+    settings.SUPABASE_URL or "", settings.SUPABASE_SERVICE_ROLE_KEY or ""
+)
+
+
+def to_response(record: dict) -> "ApprovalRequestResponse":
+    """Convert database record to response schema"""
+    from models.schemas import ApprovalRequestResponse
+
+    return ApprovalRequestResponse(
+        id=record["id"],
+        user_id=record["user_id"],
+        requester_email=record.get("requester_email"),
+        approver_email=record.get("approver_email"),
+        title=record.get("title"),
+        message=record.get("message"),
+        file_url=record.get("file_url"),
+        token=record["token"],
+        status=record["status"],
+        scheduled_send_at=record.get("scheduled_send_at"),
+        sent_at=record.get("sent_at"),
+        created_at=record["created_at"],
+        updated_at=record["updated_at"],
+    )
+
+
+class ApprovalRequestRepository:
+    """Repository for approval request database operations"""
+
+    @staticmethod
+    def create(record: dict) -> dict:
+        """Create a new approval request"""
+        result = supabase.table("approval_requests").insert(record).execute()
+        return result.data[0]
+
+    @staticmethod
+    def get_by_id(request_id: str) -> dict | None:
+        """Get request by ID"""
+        result = (
+            supabase.table("approval_requests")
+            .select("*")
+            .eq("id", request_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def get_by_token(token: str) -> dict | None:
+        """Get request by token"""
+        result = (
+            supabase.table("approval_requests").select("*").eq("token", token).execute()
+        )
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def get_by_user(user_id: str, status: str | None = None) -> list[dict]:
+        """Get all requests for a user, optionally filtered by status"""
+        query = supabase.table("approval_requests").select("*").eq("user_id", user_id)
+
+        if status:
+            query = query.eq("status", status)
+
+        query = query.order("created_at", desc=True)
+        result = query.execute()
+        return result.data or []
+
+    @staticmethod
+    def get_scheduled_due() -> list[dict]:
+        """Get all scheduled requests that are due to be sent"""
+        now = datetime.now(timezone.utc).isoformat()
+        result = (
+            supabase.table("approval_requests")
+            .select("*")
+            .eq("status", "scheduled")
+            .lte("scheduled_send_at", now)
+            .order("scheduled_send_at", asc=True)
+            .execute()
+        )
+        return result.data or []
+
+    @staticmethod
+    def update(request_id: str, data: dict) -> dict | None:
+        """Update a request"""
+        data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        result = (
+            supabase.table("approval_requests")
+            .update(data)
+            .eq("id", request_id)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def delete(request_id: str) -> bool:
+        """Delete a request"""
+        result = (
+            supabase.table("approval_requests").delete().eq("id", request_id).execute()
+        )
+        return result.count > 0
+
+    @staticmethod
+    def get_daily_sent_count(user_id: str) -> int:
+        """Get count of sent requests today (UTC)"""
+        try:
+            result = supabase.rpc(
+                "get_daily_sent_count", {"user_uuid": user_id}
+            ).execute()
+            return result.data if result.data else 0
+        except Exception as e:
+            logger.error(f"Error getting daily count: {e}")
+            return 0
+
+    @staticmethod
+    def get_next_available_day(user_id: str) -> str | None:
+        """Get next available day for sending (has < 5 requests)"""
+        try:
+            result = supabase.rpc(
+                "get_next_available_day", {"user_uuid": user_id}
+            ).execute()
+            return result.data if result.data else None
+        except Exception as e:
+            logger.error(f"Error getting next available day: {e}")
+            return None
+
+
+# Singleton instance
+repository = ApprovalRequestRepository()
