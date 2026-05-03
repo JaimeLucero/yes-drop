@@ -64,7 +64,9 @@ def get_daily_limit_info(user_id: str) -> tuple[int, datetime, str | None]:
         return 0, tomorrow_utc, None
 
 
-async def send_approval_email(record: dict):
+async def send_approval_email(
+    record: dict, is_followup: bool = False, followup_type: str | None = None
+):
     """Send approval request email via Brevo"""
     approve_url = (
         f"{settings.FRONTEND_URL}/action?token={record['token']}&action=approve"
@@ -72,11 +74,50 @@ async def send_approval_email(record: dict):
     reject_url = f"{settings.FRONTEND_URL}/action?token={record['token']}&action=reject"
 
     requester_display = record.get("requester_email", record["user_id"][:8])
-    message_section = f"<p style=\"color: #666; font-size: 15px; line-height: 1.6; margin: 16px 0;\">{record['message']}</p>" if record.get("message") else ""
-    file_section = f'<p style=\"margin: 16px 0;\"><a href="{record["file_url"]}" style=\"color: #0066cc; text-decoration: none; font-weight: 500;\">📎 View attached file</a></p>' if record.get("file_url") else ""
+    message_section = (
+        f'<p style="color: #666; font-size: 15px; line-height: 1.6; margin: 16px 0;">{record["message"]}</p>'
+        if record.get("message")
+        else ""
+    )
+    file_section = (
+        f'<p style="margin: 16px 0;"><a href="{record["file_url"]}" style="color: #0066cc; text-decoration: none; font-weight: 500;">📎 View attached file</a></p>'
+        if record.get("file_url")
+        else ""
+    )
+
+    # Format deadline date
+    deadline_str = ""
+    if record.get("deadline"):
+        deadline_dt = (
+            datetime.fromisoformat(record["deadline"].replace("Z", "+00:00"))
+            if isinstance(record["deadline"], str)
+            else record["deadline"]
+        )
+        deadline_str = deadline_dt.strftime("%B %d, %Y at %I:%M %p UTC")
 
     # Tracking pixel for email opens
     tracking_pixel = f'<img src="{settings.BACKEND_URL}/track/open?token={record["token"]}" width="1" height="1" alt="" style="display:none;opacity:0;" />'
+
+    # Subject line varies for follow-ups
+    subject_prefix = ""
+    urgency_banner = ""
+    if is_followup:
+        if followup_type == "1_day_before":
+            subject_prefix = "[Reminder] "
+            urgency_banner = f"""
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
+                <p style="color: #92400e; margin: 0; font-size: 14px; font-weight: 600;">⏰ Reminder: Response needed within 24 hours</p>
+                <p style="color: #92400e; margin: 4px 0 0 0; font-size: 13px;">This request expires on {deadline_str}</p>
+            </div>
+            """
+        elif followup_type == "2_days_after":
+            subject_prefix = "[Follow-up] "
+            urgency_banner = f"""
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
+                <p style="color: #92400e; margin: 0; font-size: 14px; font-weight: 600;">⏰ Follow-up: This request is awaiting your response</p>
+                <p style="color: #92400e; margin: 4px 0 0 0; font-size: 13px;">Sent 2 days ago • Expires on {deadline_str}</p>
+            </div>
+            """
 
     html = f"""
     <!DOCTYPE html>
@@ -94,6 +135,7 @@ async def send_approval_email(record: dict):
         </div>
 
         <div style="max-width: 600px; margin: 0 auto; padding: 40px 24px;">
+            {urgency_banner}
             <div style="background: #f9fafb; border-left: 4px solid #667eea; padding: 20px; border-radius: 4px; margin-bottom: 32px;">
                 <h2 style="color: #1f2937; margin: 0 0 8px 0; font-size: 20px; font-weight: 600;">{record["title"]}</h2>
                 <p style="color: #6b7280; margin: 0; font-size: 13px;">Needs your approval</p>
@@ -106,23 +148,23 @@ async def send_approval_email(record: dict):
                 <p style="color: #6b7280; font-size: 13px; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What do you want to do?</p>
                 <div style="display: flex; gap: 12px; margin-bottom: 16px;">
                     <a href="{approve_url}" style="flex: 1; display: inline-block; background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; font-size: 14px; transition: background 0.2s;">✓ Approve</a>
-                    <a href="{reject_url}" style="flex: 1; display: inline-block; background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; font-size: 14px; transition: background 0.2s;\">✗ Reject</a>
+                    <a href="{reject_url}" style="flex: 1; display: inline-block; background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; font-size: 14px; transition: background 0.2s;">✗ Reject</a>
                 </div>
-                <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;\">Or reply to this email to provide feedback</p>
+                <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">Or reply to this email to provide feedback</p>
             </div>
 
             <div style="border-top: 1px solid #e5e7eb; padding-top: 24px; margin-top: 32px;">
-                <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;\">
-                    This approval request expires in 7 days.<br/>
-                    <a href="{settings.FRONTEND_URL}/dashboard" style="color: #667eea; text-decoration: none;\">View all requests on YesDrop</a>
+                <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
+                    Please respond by <strong>{deadline_str}</strong> or this request will be marked as ignored.<br/>
+                    <a href="{settings.FRONTEND_URL}/dashboard" style="color: #667eea; text-decoration: none;">View all requests on YesDrop</a>
                 </p>
             </div>
         </div>
 
         <div style="background: #f3f4f6; padding: 24px 0; text-align: center; border-top: 1px solid #e5e7eb; margin-top: 32px;">
-            <p style="color: #6b7280; font-size: 12px; margin: 0; max-width: 600px; margin-left: auto; margin-right: auto; padding: 0 24px;\">
+            <p style="color: #6b7280; font-size: 12px; margin: 0; max-width: 600px; margin-left: auto; margin-right: auto; padding: 0 24px;">
                 YesDrop makes approval requests simple and seamless.<br/>
-                <a href="https://yesdrop.online" style="color: #667eea; text-decoration: none;\">Learn more</a>
+                <a href="https://yesdrop.online" style="color: #667eea; text-decoration: none;">Learn more</a>
             </p>
         </div>
 
@@ -136,6 +178,7 @@ async def send_approval_email(record: dict):
         request_title=record["title"],
         requester_email=record.get("requester_email") or "noreply@em.yesdrop.online",
         html_content=html,
+        subject_prefix=subject_prefix,
     )
 
 
@@ -183,6 +226,14 @@ class ApprovalRequestService:
             scheduled_dt = None
 
         # Prepare record
+        deadline = (
+            now + timedelta(days=request.deadline_days) if status == "pending" else None
+        )
+        follow_up_dict = (
+            request.follow_up_strategy.model_dump()
+            if request.follow_up_strategy
+            else {"enabled": True, "days_before_deadline": 1}
+        )
         record = {
             "id": req_id,
             "user_id": user_id,
@@ -195,6 +246,9 @@ class ApprovalRequestService:
             "status": status,
             "scheduled_send_at": scheduled_dt.isoformat() if scheduled_dt else None,
             "sent_at": now.isoformat() if status == "pending" else None,
+            "deadline": deadline.isoformat() if deadline else None,
+            "deadline_days": request.deadline_days,
+            "follow_up_strategy": follow_up_dict,
             "notify_requester": request.notify_requester,
         }
 
@@ -206,7 +260,10 @@ class ApprovalRequestService:
             try:
                 await send_approval_email(created)
             except Exception as e:
-                logger.error(f"Failed to send approval email for request {req_id}: {e}", exc_info=True)
+                logger.error(
+                    f"Failed to send approval email for request {req_id}: {e}",
+                    exc_info=True,
+                )
 
             # Send notification to requester
             if request.notify_requester and requester_email:
@@ -218,7 +275,10 @@ class ApprovalRequestService:
                         new_status="pending",
                     )
                 except Exception as e:
-                    logger.error(f"Failed to send status notification for request {req_id}: {e}", exc_info=True)
+                    logger.error(
+                        f"Failed to send status notification for request {req_id}: {e}",
+                        exc_info=True,
+                    )
 
         return to_response(created)
 
@@ -265,7 +325,9 @@ class ApprovalRequestService:
             raise HTTPException(404, "Request not found")
 
         if req["status"] not in ("draft", "scheduled"):
-            logger.error(f"Request {request_id} status is {req['status']}, cannot schedule")
+            logger.error(
+                f"Request {request_id} status is {req['status']}, cannot schedule"
+            )
             raise HTTPException(403, "Only drafts can be scheduled")
 
         # Parse scheduled time
@@ -279,12 +341,17 @@ class ApprovalRequestService:
             logger.error(f"Missing key in data: {e}", exc_info=True)
             raise HTTPException(400, f"Missing field: {str(e)}")
         except (ValueError, AttributeError) as e:
-            logger.error(f"Invalid scheduled_send_at format: {data.get('scheduled_send_at')}, error: {e}", exc_info=True)
+            logger.error(
+                f"Invalid scheduled_send_at format: {data.get('scheduled_send_at')}, error: {e}",
+                exc_info=True,
+            )
             raise HTTPException(400, f"Invalid datetime format: {str(e)}")
 
         now = datetime.now(timezone.utc)
         if scheduled_dt <= now:
-            logger.error(f"scheduled_dt {scheduled_dt} is not in the future (now: {now})")
+            logger.error(
+                f"scheduled_dt {scheduled_dt} is not in the future (now: {now})"
+            )
             raise HTTPException(400, "scheduled_send_at must be in the future")
 
         # Update request
@@ -293,6 +360,13 @@ class ApprovalRequestService:
             "scheduled_send_at": scheduled_dt.isoformat(),
             "updated_at": now.isoformat(),
         }
+
+        # Add deadline and follow-up settings if provided
+        if data.get("deadline_days"):
+            update_data["deadline_days"] = data["deadline_days"]
+        if data.get("follow_up_strategy"):
+            update_data["follow_up_strategy"] = data["follow_up_strategy"]
+
         logger.info(f"Updating request {request_id} with: {update_data}")
 
         updated = repository.update(request_id, update_data)
@@ -342,9 +416,16 @@ class ApprovalRequestService:
 
         # Update status and send email
         now = datetime.now(timezone.utc)
+        deadline_days = req.get("deadline_days", 3)
+        deadline = now + timedelta(days=deadline_days)
         update_data = {
             "status": "pending",
             "sent_at": now.isoformat(),
+            "deadline": deadline.isoformat(),
+            "deadline_days": deadline_days,
+            "follow_up_strategy": req.get(
+                "follow_up_strategy", {"enabled": True, "days_before_deadline": 1}
+            ),
             "updated_at": now.isoformat(),
         }
 
@@ -353,7 +434,10 @@ class ApprovalRequestService:
         try:
             await send_approval_email(updated)
         except Exception as e:
-            logger.error(f"Failed to send approval email for request {request_id}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to send approval email for request {request_id}: {e}",
+                exc_info=True,
+            )
 
         # Send notification to requester using stored email
         requester_email = req.get("requester_email")
@@ -366,7 +450,10 @@ class ApprovalRequestService:
                     new_status="pending",
                 )
             except Exception as e:
-                logger.error(f"Failed to send status notification for request {request_id}: {e}", exc_info=True)
+                logger.error(
+                    f"Failed to send status notification for request {request_id}: {e}",
+                    exc_info=True,
+                )
 
         return to_response(updated)
 
@@ -451,7 +538,9 @@ class ApprovalRequestService:
         )
 
     @staticmethod
-    async def process_action(token: str, action: str, feedback: str | None = None) -> tuple[str, str]:
+    async def process_action(
+        token: str, action: str, feedback: str | None = None
+    ) -> tuple[str, str]:
         """Process approve/reject action. Returns (new_status, html_response)"""
         if action not in ("approve", "reject"):
             raise HTTPException(400, "Invalid action")
@@ -466,7 +555,9 @@ class ApprovalRequestService:
         now = datetime.now(timezone.utc)
 
         # Update status
-        repository.update(req["id"], {"status": new_status, "updated_at": now.isoformat()})
+        repository.update(
+            req["id"], {"status": new_status, "updated_at": now.isoformat()}
+        )
 
         # Store feedback if provided
         if feedback:
@@ -583,11 +674,18 @@ class ApprovalRequestService:
 
         # Update status
         now = datetime.now(timezone.utc)
+        deadline_days = req.get("deadline_days", 3)
+        deadline = now + timedelta(days=deadline_days)
         repository.update(
             request_id,
             {
                 "status": "pending",
                 "sent_at": now.isoformat(),
+                "deadline": deadline.isoformat(),
+                "deadline_days": deadline_days,
+                "follow_up_strategy": req.get(
+                    "follow_up_strategy", {"enabled": True, "days_before_deadline": 1}
+                ),
                 "updated_at": now.isoformat(),
             },
         )
@@ -603,6 +701,89 @@ class ApprovalRequestService:
             )
 
         return {"success": True}
+
+    @staticmethod
+    async def check_deadlines_and_send_followups(
+        authorization: str | None = None,
+    ) -> dict:
+        """Check deadlines and send follow-ups or mark as ignored. Called by cron."""
+        # Verify cron secret
+        expected = f"Bearer {settings.CRON_SECRET or ''}"
+        if authorization != expected:
+            raise HTTPException(401, "Unauthorized")
+
+        results = {"ignored": 0, "followups_sent": 0}
+
+        # 1. Mark requests past deadline as ignored
+        past_deadline = repository.get_requests_past_deadline()
+        for req in past_deadline:
+            repository.update(
+                req["id"],
+                {
+                    "status": "ignored",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
+            )
+            results["ignored"] += 1
+            logger.info(
+                f"Request {req['id']} marked as ignored (deadline: {req['deadline']})"
+            )
+
+            # Notify requester
+            requester_email = req.get("requester_email")
+            if requester_email:
+                try:
+                    await email_service.send_ignored_notification(
+                        to_email=requester_email,
+                        request_title=req["title"] or "Untitled",
+                        deadline=req["deadline"],
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send ignored notification: {e}")
+
+        # 2. Send before-deadline follow-ups
+        before_deadline_followups = (
+            repository.get_requests_due_for_followup_before_deadline()
+        )
+        for req in before_deadline_followups:
+            try:
+                days_before = req.get("days_before", 1)
+                await send_approval_email(
+                    req,
+                    is_followup=True,
+                    followup_type=f"{days_before}_day_before_deadline",
+                )
+                # Record the follow-up event
+                repository.add_email_event(req["id"], "followup_before_deadline")
+                results["followups_sent"] += 1
+                logger.info(
+                    f"Sent {days_before}-day-before follow-up for request {req['id']}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to send before-deadline follow-up: {e}")
+
+        # 3. Send after-sending follow-ups
+        after_sending_followups = (
+            repository.get_requests_due_for_followup_after_sending()
+        )
+        for req in after_sending_followups:
+            try:
+                days_after = req.get("days_after", 2)
+                await send_approval_email(
+                    req,
+                    is_followup=True,
+                    followup_type=f"{days_after}_days_after_sending",
+                )
+                # Record the follow-up event
+                repository.add_email_event(req["id"], "followup_after_sending")
+                results["followups_sent"] += 1
+                logger.info(
+                    f"Sent {days_after}-days-after follow-up for request {req['id']}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to send after-sending follow-up: {e}")
+
+        return results
 
 
 # Singleton instance

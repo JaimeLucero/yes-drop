@@ -9,6 +9,7 @@ const STATUS_OPTIONS = [
   { value: 'pending', label: 'Sent', color: 'bg-amber-500' },
   { value: 'approved', label: 'Approved', color: 'bg-emerald-500' },
   { value: 'rejected', label: 'Rejected', color: 'bg-red-500' },
+  { value: 'ignored', label: 'Ignored', color: 'bg-gray-600' },
 ] as const
 
 export type RequestStatusFilter = typeof STATUS_OPTIONS[number]['value']

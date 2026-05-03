@@ -1,7 +1,7 @@
 'use client'
 
 import { format, formatDistanceToNow } from 'date-fns'
-import { Clock, CheckCircle2, XCircle, Edit, Trash2, Calendar, Send, Paperclip, Mail, Eye } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, Edit, Trash2, Calendar, Send, Paperclip, Mail, Eye, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -54,6 +54,12 @@ function StatusBadge({ status }: { status: ApprovalRequest['status'] }) {
       text: 'text-red-700 dark:text-red-300',
       border: 'border-red-200 dark:border-red-800',
       icon: XCircle,
+    },
+    ignored: {
+      bg: 'bg-gray-50 dark:bg-gray-900/30',
+      text: 'text-gray-600 dark:text-gray-400',
+      border: 'border-gray-200 dark:border-gray-800',
+      icon: AlertTriangle,
     },
   }
 
@@ -130,6 +136,17 @@ export function RequestCard({ request, onEdit, onDelete, onSchedule, onSendNow }
               </div>
             )}
 
+            {request.deadline && request.status === 'pending' && (
+              <div className="text-sm">
+                <p className="text-foreground/60 font-semibold uppercase text-xs tracking-wide mb-2">
+                  Response Deadline
+                </p>
+                <p className="text-amber-700 dark:text-amber-400 font-medium">
+                  {format(new Date(request.deadline), 'EEEE, MMMM d, yyyy p')}
+                </p>
+              </div>
+            )}
+
             {request.feedback && (
               <div className="text-sm">
                 <p className="text-foreground/60 font-semibold uppercase text-xs tracking-wide mb-2">
@@ -185,8 +202,14 @@ export function RequestCard({ request, onEdit, onDelete, onSchedule, onSendNow }
                     <span>Rejected</span>
                   </>
                 )}
+                {request.status === 'ignored' && (
+                  <>
+                    <AlertTriangle className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                    <span>Ignored (deadline passed)</span>
+                  </>
+                )}
               </div>
-              {(request.status === 'pending' || request.status === 'approved' || request.status === 'rejected') && (
+              {(request.status === 'pending' || request.status === 'approved' || request.status === 'rejected' || request.status === 'ignored') && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Eye className="h-3.5 w-3.5" />
                   {request.view_count > 0

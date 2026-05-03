@@ -1,0 +1,173 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+import { Calendar as CalendarIcon, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+
+interface DateTimePickerModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onDateTimeSelect: (datetime: string) => void
+  initialDateTime?: string | null
+  label?: string
+  minDate?: Date
+}
+
+export function DateTimePickerModal({ 
+  open, 
+  onOpenChange, 
+  onDateTimeSelect, 
+  initialDateTime,
+  label = 'Select Date and Time',
+  minDate 
+}: DateTimePickerModalProps) {
+  const [date, setDate] = useState<Date | undefined>(
+    initialDateTime ? new Date(initialDateTime) : new Date()
+  )
+  const [time, setTime] = useState({ hours: 9, minutes: 0 })
+  const [serverTime, setServerTime] = useState<Date | null>(null)
+
+  useEffect(() => {
+    const syncServerTime = async () => {
+      try {
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!
+        const response = await fetch(`${BACKEND_URL}/health`)
+        const serverDateStr = response.headers.get('date')
+        if (serverDateStr) {
+          setServerTime(new Date(serverDateStr))
+        } else {
+          setServerTime(new Date())
+        }
+      } catch (error) {
+        console.warn('Could not sync server time, using client time')
+        setServerTime(new Date())
+      }
+    }
+
+    if (open) {
+      syncServerTime()
+    }
+  }, [open])
+
+  const now = new Date()
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const currentLocalHours = now.getHours()
+  const currentLocalMinutes = now.getMinutes()
+
+  const isTimeInPast = date &&
+    date.getTime() === todayLocal.getTime() &&
+    (time.hours < currentLocalHours || (time.hours === currentLocalHours && time.minutes <= currentLocalMinutes))
+
+  const handleSelect = () => {
+    if (!date || isTimeInPast) return
+
+    const localDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      time.hours,
+      time.minutes
+    )
+
+    onDateTimeSelect(localDate.toISOString())
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{label}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Date Picker */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Select Date</label>
+            <div className="flex justify-center">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                disabled={minDate ? (d) => d < minDate : undefined}
+                initialFocus
+              />
+            </div>
+          </div>
+
+          {/* Time Picker */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Select Time</label>
+            <div className="flex gap-2 justify-center">
+              <select
+                value={time.hours}
+                onChange={(e) => {
+                  const hours = parseInt(e.target.value)
+                  setTime({ ...time, hours })
+                }}
+                className="h-10 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {Array.from({ length: 24 }, (_, i) => {
+                  const isDisabled = date && date.getTime() === todayLocal.getTime() && i < currentLocalHours
+                  return (
+                    <option key={i} value={i} disabled={isDisabled}>
+                      {i.toString().padStart(2, '0')}
+                    </option>
+                  )
+                })}
+              </select>
+              <span className="flex items-center text-foreground font-medium">:</span>
+              <select
+                value={time.minutes}
+                onChange={(e) => setTime({ ...time, minutes: parseInt(e.target.value) })}
+                className="h-10 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => {
+                  const isDisabled = date &&
+                    date.getTime() === todayLocal.getTime() &&
+                    time.hours === currentLocalHours &&
+                    m <= currentLocalMinutes
+                  return (
+                    <option key={m} value={m} disabled={isDisabled}>
+                      {m.toString().padStart(2, '0')}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+
+            <div className="space-y-2 text-xs text-muted-foreground pt-2">
+              <p>
+                Current time: {currentLocalHours.toString().padStart(2, '0')}:{currentLocalMinutes.toString().padStart(2, '0')} (your timezone)
+              </p>
+              {date && (
+                <p className={isTimeInPast ? 'text-red-500 font-medium' : ''}>
+                  Selected: {format(date, 'EEEE, MMMM d, yyyy')} at {time.hours.toString().padStart(2, '0')}:{time.minutes.toString().padStart(2, '0')}
+                  {isTimeInPast && ' (⚠️ in the past)'}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSelect} disabled={!date || isTimeInPast}>
+            {isTimeInPast ? 'Select future time' : 'Select'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

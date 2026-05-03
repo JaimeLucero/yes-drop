@@ -22,6 +22,7 @@ class EmailService:
         request_title: str,
         requester_email: str,
         html_content: str,
+        subject_prefix: str = "",
     ) -> bool:
         """Send approval request email via Brevo"""
         if not settings.BREVO_API_KEY:
@@ -45,7 +46,7 @@ class EmailService:
                 sender=sender,
                 to=to,
                 reply_to=reply_to,
-                subject=f"Approval Request: {request_title}",
+                subject=f"{subject_prefix}Approval Request: {request_title}",
                 html_content=html_content,
             )
             logger.info(f"Email sent successfully, messageId: {response.message_id}")
@@ -142,6 +143,57 @@ class EmailService:
             return True
         except Exception as e:
             logger.error(f"Failed to send status notification: {e}", exc_info=True)
+            raise
+
+    async def send_ignored_notification(
+        self,
+        to_email: str,
+        request_title: str,
+        deadline: datetime | str,
+    ) -> bool:
+        """Send notification to requester when their request is ignored (deadline passed)"""
+        if not settings.BREVO_API_KEY:
+            return False
+
+        sender = SendTransacEmailRequestSender(
+            name="YesDrop",
+            email="noreply@yesdrop.online",
+        )
+
+        to = [SendTransacEmailRequestToItem(email=to_email)]
+
+        # Format deadline
+        if isinstance(deadline, str):
+            deadline_dt = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+        else:
+            deadline_dt = deadline
+        deadline_str = deadline_dt.strftime("%B %d, %Y at %I:%M %p UTC")
+
+        html = f"""
+        <html><body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #6b7280;">Request Expired</h2>
+            <p>Your request "<strong>{request_title}</strong>" was not responded to by the deadline.</p>
+            <p><strong>Deadline was:</strong> {deadline_str}</p>
+            <p>The request has been marked as <strong>ignored</strong>.</p>
+            <p style="margin-top: 24px;">You can:</p>
+            <ul>
+                <li>Create a new request to the same approver</li>
+                <li>Edit and resend this request from your dashboard</li>
+            </ul>
+        </body></html>
+        """
+
+        try:
+            response = self.api.transactional_emails.send_transac_email(
+                sender=sender,
+                to=to,
+                subject=f"Request Expired: {request_title}",
+                html_content=html,
+            )
+            logger.info(f"Ignored notification sent for: {request_title}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send ignored notification: {e}", exc_info=True)
             raise
 
 

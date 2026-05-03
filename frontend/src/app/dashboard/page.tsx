@@ -51,7 +51,12 @@ export default function DashboardPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: ({ id, datetime }: { id: string; datetime: string }) =>
+    mutationFn: ({ id, datetime, followUpStrategy, deadlineDays }: { 
+      id: string; 
+      datetime: string; 
+      followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number };
+      deadlineDays?: number;
+    }) =>
       scheduleRequest(id, datetime),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
@@ -107,7 +112,7 @@ export default function DashboardPage() {
     setScheduleModalOpen(true)
   }
 
-  const handleScheduleSubmit = (datetime: string) => {
+  const handleScheduleSubmit = (datetime: string, followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number }, deadlineDays?: number) => {
     if (selectedRequest) {
       scheduleMutation.mutate({
         id: selectedRequest.id,

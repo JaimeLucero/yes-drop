@@ -14,9 +14,16 @@ export interface ApprovalRequest {
   viewed_at: string | null
   view_count: number
   token: string
-  status: 'draft' | 'scheduled' | 'pending' | 'approved' | 'rejected'
+  status: 'draft' | 'scheduled' | 'pending' | 'approved' | 'rejected' | 'ignored'
   scheduled_send_at: string | null
   sent_at: string | null
+  deadline: string | null
+  deadline_days: number | null
+  follow_up_strategy: {
+    enabled: boolean
+    days_before_deadline?: number
+    days_after_sending?: number
+  } | null
   created_at: string
   updated_at: string
 }
@@ -66,6 +73,12 @@ export async function createRequest(data: {
   message?: string
   file_url?: string
   scheduled_send_at?: string
+  deadline_days?: number
+  follow_up_strategy?: {
+    enabled: boolean
+    days_before_deadline?: number
+    days_after_sending?: number
+  }
 }): Promise<ApprovalRequest> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -119,12 +132,18 @@ export async function createDraft(data: {
 
 export async function scheduleRequest(
   requestId: string,
-  scheduledSendAt: string
+  scheduledSendAt: string,
+  followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number },
+  deadlineDays?: number
 ): Promise<ApprovalRequest> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
   if (!session) throw new Error('Not authenticated')
+
+  const body: any = { scheduled_send_at: scheduledSendAt }
+  if (followUpStrategy !== undefined) body.follow_up_strategy = followUpStrategy
+  if (deadlineDays !== undefined) body.deadline_days = deadlineDays
 
   const response = await fetch(`${BACKEND_URL}/api/requests/${requestId}/schedule`, {
     method: 'PUT',
@@ -132,7 +151,7 @@ export async function scheduleRequest(
       Authorization: `Bearer ${session.access_token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ scheduled_send_at: scheduledSendAt }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {

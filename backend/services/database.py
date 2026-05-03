@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize Supabase client
 if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
-    logger.warning("⚠️  Supabase credentials not configured. Database operations will fail.")
+    logger.warning(
+        "⚠️  Supabase credentials not configured. Database operations will fail."
+    )
     supabase = None
 else:
     try:
@@ -59,6 +61,9 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         status=record["status"],
         scheduled_send_at=record.get("scheduled_send_at"),
         sent_at=record.get("sent_at"),
+        deadline=record.get("deadline"),
+        deadline_days=record.get("deadline_days"),
+        follow_up_strategy=record.get("follow_up_strategy"),
         created_at=record["created_at"],
         updated_at=record["updated_at"],
     )
@@ -114,13 +119,17 @@ class ApprovalRequestRepository:
                 .select("*")
                 .eq("status", "scheduled")
                 .lte("scheduled_send_at", now)
-                .order("scheduled_send_at", asc=True)
+                .order("scheduled_send_at", desc=False)
                 .execute()
             )
             requests = result.data or []
-            logger.debug(f"Scheduler check: NOW={now}, Found {len(requests)} scheduled request(s) due")
+            logger.debug(
+                f"Scheduler check: NOW={now}, Found {len(requests)} scheduled request(s) due"
+            )
             for req in requests:
-                logger.debug(f"  - {req['id']}: scheduled_send_at={req.get('scheduled_send_at')}")
+                logger.debug(
+                    f"  - {req['id']}: scheduled_send_at={req.get('scheduled_send_at')}"
+                )
             return requests
         except Exception as e:
             logger.error(f"Error getting scheduled requests: {e}", exc_info=True)
@@ -171,14 +180,22 @@ class ApprovalRequestRepository:
             return None
 
     @staticmethod
-    def add_feedback(request_id: str, approver_email: str, feedback_text: str) -> dict | None:
+    def add_feedback(
+        request_id: str, approver_email: str, feedback_text: str
+    ) -> dict | None:
         """Add feedback to a request"""
         try:
-            result = supabase.table("request_feedback").insert({
-                "request_id": request_id,
-                "approver_email": approver_email,
-                "feedback_text": feedback_text,
-            }).execute()
+            result = (
+                supabase.table("request_feedback")
+                .insert(
+                    {
+                        "request_id": request_id,
+                        "approver_email": approver_email,
+                        "feedback_text": feedback_text,
+                    }
+                )
+                .execute()
+            )
             return result.data[0] if result.data else None
         except Exception as e:
             logger.error(f"Error adding feedback: {e}")
@@ -188,22 +205,36 @@ class ApprovalRequestRepository:
     def get_feedback(request_id: str) -> list[dict]:
         """Get all feedback for a request"""
         try:
-            result = supabase.table("request_feedback").select("*").eq("request_id", request_id).order("created_at", desc=True).execute()
+            result = (
+                supabase.table("request_feedback")
+                .select("*")
+                .eq("request_id", request_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
             return result.data or []
         except Exception as e:
             logger.error(f"Error getting feedback: {e}")
             return []
 
     @staticmethod
-    def log_email_event(request_id: str, ip_address: str | None, user_agent: str | None) -> dict | None:
+    def log_email_event(
+        request_id: str, ip_address: str | None, user_agent: str | None
+    ) -> dict | None:
         """Log an email open event"""
         try:
-            result = supabase.table("request_email_events").insert({
-                "request_id": request_id,
-                "event_type": "open",
-                "ip_address": ip_address,
-                "user_agent": user_agent,
-            }).execute()
+            result = (
+                supabase.table("request_email_events")
+                .insert(
+                    {
+                        "request_id": request_id,
+                        "event_type": "open",
+                        "ip_address": ip_address,
+                        "user_agent": user_agent,
+                    }
+                )
+                .execute()
+            )
             return result.data[0] if result.data else None
         except Exception as e:
             logger.error(f"Error logging email event: {e}")
@@ -213,10 +244,71 @@ class ApprovalRequestRepository:
     def get_email_events(request_id: str) -> list[dict]:
         """Get all email events for a request"""
         try:
-            result = supabase.table("request_email_events").select("*").eq("request_id", request_id).order("created_at", desc=False).execute()
+            result = (
+                supabase.table("request_email_events")
+                .select("*")
+                .eq("request_id", request_id)
+                .order("created_at", desc=False)
+                .execute()
+            )
             return result.data or []
         except Exception as e:
             logger.error(f"Error getting email events: {e}")
+            return []
+
+    @staticmethod
+    def add_email_event(request_id: str, event_type: str) -> dict | None:
+        """Add an email event (e.g., follow-up sent)"""
+        try:
+            result = (
+                supabase.table("request_email_events")
+                .insert(
+                    {
+                        "request_id": request_id,
+                        "event_type": event_type,
+                    }
+                )
+                .execute()
+            )
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Error adding email event: {e}")
+            return None
+
+    @staticmethod
+    def get_requests_past_deadline() -> list[dict]:
+        """Get all pending requests past their deadline"""
+        try:
+            result = supabase.rpc("get_requests_past_deadline").execute()
+            return result.data or []
+        except Exception as e:
+            logger.error(f"Error getting requests past deadline: {e}")
+            return []
+
+    @staticmethod
+    def get_requests_due_for_followup_before_deadline() -> list[dict]:
+        """Get requests due for follow-up before deadline"""
+        try:
+            result = supabase.rpc(
+                "get_requests_due_for_followup_before_deadline"
+            ).execute()
+            return result.data or []
+        except Exception as e:
+            logger.error(
+                f"Error getting requests due for before-deadline follow-up: {e}"
+            )
+            return []
+
+    @staticmethod
+    def get_requests_due_for_followup_after_sending() -> list[dict]:
+        """Get requests due for follow-up after sending"""
+        try:
+            result = supabase.rpc(
+                "get_requests_due_for_followup_after_sending"
+            ).execute()
+            return result.data or []
+        except Exception as e:
+            logger.error(f"Error getting requests due for after-sending follow-up: {e}")
             return []
 
 

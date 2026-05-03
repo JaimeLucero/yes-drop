@@ -52,7 +52,9 @@ def check_and_send_scheduled():
             logger.debug("No scheduled requests due at this time")
             return
 
-        logger.info(f"Found {len(scheduled_requests)} scheduled request(s) to send. Triggering Edge Function...")
+        logger.info(
+            f"Found {len(scheduled_requests)} scheduled request(s) to send. Triggering Edge Function..."
+        )
 
         # Only call Edge Function if there are requests to send
         if settings.CRON_SECRET and settings.SUPABASE_URL:
@@ -60,30 +62,59 @@ def check_and_send_scheduled():
                 response = httpx.post(
                     f"{settings.SUPABASE_URL}/functions/v1/send-scheduled-requests",
                     headers={"Authorization": f"Bearer {settings.CRON_SECRET}"},
-                    timeout=30.0
+                    timeout=30.0,
                 )
                 if response.status_code == 200:
-                    logger.info(f"Edge Function executed successfully: {response.json()}")
+                    logger.info(
+                        f"Edge Function executed successfully: {response.json()}"
+                    )
                 else:
-                    logger.error(f"Edge Function returned status {response.status_code}: {response.text}")
+                    logger.error(
+                        f"Edge Function returned status {response.status_code}: {response.text}"
+                    )
             except Exception as e:
                 logger.error(f"Error calling Edge Function: {e}")
         else:
-            logger.warning("CRON_SECRET or SUPABASE_URL not configured, cannot trigger Edge Function")
+            logger.warning(
+                "CRON_SECRET or SUPABASE_URL not configured, cannot trigger Edge Function"
+            )
     except Exception as e:
         logger.error(f"Error in scheduled request check: {e}", exc_info=True)
 
 
+def check_deadlines_and_followups():
+    """Check deadlines and send follow-ups"""
+    try:
+        logger.info("Running deadline and follow-up check...")
+        asyncio.run(service.check_deadlines_and_send_followups())
+        logger.info("Deadline and follow-up check complete")
+    except Exception as e:
+        logger.error(f"Error in deadline check: {e}", exc_info=True)
+
+
 scheduler = None
+
 
 def start_scheduler():
     """Start background scheduler"""
     global scheduler
     try:
         scheduler = BackgroundScheduler()
-        scheduler.add_job(check_and_send_scheduled, 'interval', minutes=5, id='check_scheduled_requests')
+        scheduler.add_job(
+            check_and_send_scheduled,
+            "interval",
+            minutes=5,
+            id="check_scheduled_requests",
+        )
+        scheduler.add_job(
+            check_deadlines_and_followups,
+            "interval",
+            hours=1,
+            id="check_deadlines_followups",
+        )
         scheduler.start()
         logger.info("✓ Scheduled request checker started (runs every 5 minutes)")
+        logger.info("✓ Deadline and follow-up checker started (runs every hour)")
     except Exception as e:
         logger.error(f"Failed to start scheduler: {e}", exc_info=True)
 
@@ -134,7 +165,9 @@ async def schedule_request(
 ):
     """Schedule a draft for sending"""
     try:
-        logger.info(f"Schedule request: {request_id}, data: {data.dict()}, user_id: {user_id}")
+        logger.info(
+            f"Schedule request: {request_id}, data: {data.dict()}, user_id: {user_id}"
+        )
         result = await service.schedule_request(request_id, data.dict(), user_id)
         logger.info(f"Schedule successful for request {request_id}")
         return result
@@ -214,10 +247,18 @@ async def send_scheduled_request(
     return await service.send_scheduled_internal(data.get("request_id"), authorization)
 
 
+@app.post("/api/internal/check-deadlines")
+async def check_deadlines(
+    authorization: str | None = Header(None),
+):
+    """Internal endpoint for cron to check deadlines and send follow-ups"""
+    return await service.check_deadlines_and_send_followups(authorization)
+
+
 @app.get("/track/open")
 async def track_open(token: str, request: Request):
     """Track email open via pixel. Public endpoint, no auth required."""
-    TRANSPARENT_GIF = b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x00\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b'
+    TRANSPARENT_GIF = b"\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x00\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b"
 
     try:
         req = repository.get_by_token(token)
@@ -232,7 +273,7 @@ async def track_open(token: str, request: Request):
     return Response(
         content=TRANSPARENT_GIF,
         media_type="image/gif",
-        headers={"Cache-Control": "no-store"}
+        headers={"Cache-Control": "no-store"},
     )
 
 

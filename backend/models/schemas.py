@@ -1,5 +1,14 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
+from typing import Optional
+
+
+class FollowUpStrategy(BaseModel):
+    """Flexible follow-up strategy configuration"""
+
+    enabled: bool = True
+    days_before_deadline: Optional[int] = None
+    days_after_sending: Optional[int] = None
 
 
 class ApprovalRequestCreate(BaseModel):
@@ -11,6 +20,8 @@ class ApprovalRequestCreate(BaseModel):
     file_url: str | None = None
     scheduled_send_at: str | None = None
     notify_requester: bool = True
+    deadline_days: int = 3
+    follow_up_strategy: FollowUpStrategy | None = None
 
 
 class ApprovalRequestDraft(BaseModel):
@@ -31,12 +42,16 @@ class ApprovalRequestUpdate(BaseModel):
     file_url: str | None = None
     scheduled_send_at: str | None = None
     notify_requester: bool | None = None
+    deadline_days: int | None = None
+    follow_up_strategy: FollowUpStrategy | None = None
 
 
 class ScheduleRequest(BaseModel):
     """Schedule a draft request"""
 
     scheduled_send_at: str
+    deadline_days: int | None = None
+    follow_up_strategy: FollowUpStrategy | None = None
 
 
 class ApprovalRequestResponse(BaseModel):
@@ -54,6 +69,9 @@ class ApprovalRequestResponse(BaseModel):
     status: str
     scheduled_send_at: datetime | None
     sent_at: datetime | None
+    deadline: datetime | None
+    deadline_days: int | None
+    follow_up_strategy: dict | None
     created_at: datetime
     updated_at: datetime
 

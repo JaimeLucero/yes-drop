@@ -4,8 +4,10 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createRequest, uploadFile, createDraft, scheduleRequest } from '@/lib/api'
-import { Upload, AlertCircle, File, CheckCircle, Calendar } from 'lucide-react'
+import { Upload, AlertCircle, File, CheckCircle, Calendar, Clock, X } from 'lucide-react'
 import { ScheduleModal } from '@/components/schedule-modal'
+import { DateTimePickerModal } from '@/components/date-time-picker-modal'
+import { FollowUpModal } from '@/components/followup-modal'
 import { format } from 'date-fns'
 
 export default function NewRequestPage() {
@@ -22,16 +24,38 @@ export default function NewRequestPage() {
   const [dragOver, setDragOver] = useState(false)
   const [action, setAction] = useState<'send' | 'draft' | 'schedule'>('send')
   const [scheduledTime, setScheduledTime] = useState('')
+  const [deadlineDateTime, setDeadlineDateTime] = useState<string>('')
+  const [followUpEnabled, setFollowUpEnabled] = useState(true)
+  const [followUpConfig, setFollowUpConfig] = useState<{ beforeDeadline?: string; afterSending?: string }>({})
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [deadlineModalOpen, setDeadlineModalOpen] = useState(false)
+  const [followUpModalOpen, setFollowUpModalOpen] = useState(false)
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
+      const followUpStrategy = followUpEnabled && (followUpConfig.beforeDeadline || followUpConfig.afterSending) ? {
+        enabled: true,
+        days_before_deadline: followUpConfig.beforeDeadline ? calculateDaysUntil(followUpConfig.beforeDeadline) : undefined,
+        days_after_sending: followUpConfig.afterSending ? calculateDaysUntil(followUpConfig.afterSending) : undefined,
+      } : { enabled: false }
+
+      const deadlineDays = deadlineDateTime ? calculateDaysUntil(deadlineDateTime) : 3
+
       if (action === 'draft') {
         return createDraft(data)
       } else if (action === 'schedule') {
-        return createRequest({ ...data, scheduled_send_at: scheduledTime })
+        return createRequest({ 
+          ...data, 
+          scheduled_send_at: scheduledTime,
+          deadline_days: deadlineDays,
+          follow_up_strategy: followUpStrategy,
+        })
       } else {
-        return createRequest(data)
+        return createRequest({ 
+          ...data, 
+          deadline_days: deadlineDays,
+          follow_up_strategy: followUpStrategy,
+        })
       }
     },
     onSuccess: () => {
@@ -39,6 +63,14 @@ export default function NewRequestPage() {
       router.push('/dashboard')
     },
   })
+
+  function calculateDaysUntil(datetimeString: string): number {
+    const now = new Date()
+    const target = new Date(datetimeString)
+    const diffMs = target.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+    return Math.max(1, diffDays)
+  }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -317,6 +349,82 @@ export default function NewRequestPage() {
             </div>
           )}
 
+          {/* Follow-up Strategy */}
+          {(action === 'schedule' || action === 'send') && (
+            <div className="group">
+              <label className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
+                Deadline & Follow-up Reminders
+              </label>
+              
+              <div className="space-y-4">
+                {/* Enable/Disable Toggle */}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={followUpEnabled}
+                    onChange={(e) => setFollowUpEnabled(e.target.checked)}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-medium text-foreground">Enable follow-up reminders</span>
+                </label>
+
+                {followUpEnabled && (
+                  <div className="space-y-4 p-4 bg-secondary/50 rounded-xl border border-border">
+                    {/* Deadline DateTime */}
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Response Deadline
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setDeadlineModalOpen(true)}
+                        className="w-full flex items-center gap-2 px-4 py-3 bg-background border-2 border-border rounded-xl text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
+                      >
+                        <Calendar className="h-5 w-5 text-foreground/60" />
+                        <span className={deadlineDateTime ? 'text-foreground font-medium' : 'text-foreground/40'}>
+                          {deadlineDateTime
+                            ? format(new Date(deadlineDateTime), 'EEEE, MMMM d, yyyy p')
+                            : 'Select deadline date and time'}
+                        </span>
+                      </button>
+                      <p className="text-xs text-foreground/50 mt-1">
+                        Requests will be marked as "ignored" if not responded to by this time
+                      </p>
+                    </div>
+
+                    {/* Follow-up Configuration */}
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Reminder Times
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpModalOpen(true)}
+                        className="w-full flex items-center gap-2 px-4 py-3 bg-background border-2 border-border rounded-xl text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
+                      >
+                        <Clock className="h-5 w-5 text-foreground/60" />
+                        <span className={followUpConfig.beforeDeadline || followUpConfig.afterSending ? 'text-foreground font-medium' : 'text-foreground/40'}>
+                          {followUpConfig.beforeDeadline || followUpConfig.afterSending
+                            ? `${followUpConfig.beforeDeadline ? 'Reminder before deadline' : ''}${followUpConfig.beforeDeadline && followUpConfig.afterSending ? ' • ' : ''}${followUpConfig.afterSending ? 'Follow-up after sending' : ''}`
+                            : 'Configure reminder times'}
+                        </span>
+                      </button>
+                      <p className="text-xs text-foreground/50 mt-1">
+                        Set specific times for reminder emails
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {!followUpEnabled && (
+                  <p className="text-xs text-foreground/50 italic">
+                    No reminder emails will be sent. The request will still expire at the deadline if not responded to.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Error Message */}
           {mutation.isError && (
             <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
@@ -359,8 +467,28 @@ export default function NewRequestPage() {
         <ScheduleModal
           open={scheduleModalOpen}
           onOpenChange={setScheduleModalOpen}
-          onSchedule={setScheduledTime}
+          onSchedule={(datetime, strategy, deadlineDaysVal) => {
+            setScheduledTime(datetime)
+          }}
           initialDate={scheduledTime || undefined}
+        />
+
+        {/* Deadline Modal */}
+        <DateTimePickerModal
+          open={deadlineModalOpen}
+          onOpenChange={setDeadlineModalOpen}
+          onDateTimeSelect={setDeadlineDateTime}
+          initialDateTime={deadlineDateTime}
+          label="Set Response Deadline"
+          minDate={new Date(new Date().getTime() + 24 * 60 * 60 * 1000)} // At least 1 day from now
+        />
+
+        {/* Follow-up Modal */}
+        <FollowUpModal
+          open={followUpModalOpen}
+          onOpenChange={setFollowUpModalOpen}
+          onSave={setFollowUpConfig}
+          initialConfig={followUpConfig}
         />
       </main>
     </div>
