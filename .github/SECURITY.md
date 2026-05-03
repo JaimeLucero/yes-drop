@@ -17,13 +17,15 @@ When documenting configuration, use placeholders instead of real values:
 ❌ **Wrong:**
 ```env
 SUPABASE_URL=https://abcdefghijkl.supabase.co
-SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_KEY=your-actual-secret-key-here
+DATABASE_PASSWORD=super-secret-password123
 ```
 
 ✅ **Right:**
 ```env
 SUPABASE_URL=https://[your-project-id].supabase.co
 SUPABASE_KEY=[your-anon-key]
+DATABASE_PASSWORD=[your-database-password]
 ```
 
 ## Security Scanning

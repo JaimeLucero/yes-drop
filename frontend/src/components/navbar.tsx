@@ -1,33 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import Link from 'next/link'
+import { useTheme } from './theme-provider'
 
 export function Navbar() {
-  const [isDark, setIsDark] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    // Check initial state
-    const isDarkMode = document.documentElement.classList.contains('dark')
-    setIsDark(isDarkMode)
-    setMounted(true)
-  }, [])
-
-  const toggleTheme = () => {
-    const newDarkState = !isDark
-    setIsDark(newDarkState)
-
-    if (newDarkState) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }
+  const { theme, toggleTheme } = useTheme()
 
   return (
-    <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b border-border z-50">
+    <nav className="fixed top-0 w-full bg-white dark:bg-card border-b border-border z-50">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/">
           <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
@@ -43,7 +24,7 @@ export function Navbar() {
             className="p-2 hover:bg-secondary rounded-lg transition-colors text-foreground"
             aria-label="Toggle theme"
           >
-            {mounted && isDark ? (
+            {theme === 'dark' ? (
               <Sun className="h-5 w-5" />
             ) : (
               <Moon className="h-5 w-5" />

@@ -5,7 +5,7 @@ import { fetchRequests, type ApprovalRequest } from '@/lib/api'
 import { LogOut, Plus, Clock, CheckCircle2, XCircle, Zap, TrendingUp, Moon, Sun } from 'lucide-react'
 import Link from 'next/link'
 import { signOut } from '@/lib/supabase'
-import { useState, useEffect } from 'react'
+import { useTheme } from '@/components/theme-provider'
 
 function StatusBadge({ status }: { status: ApprovalRequest['status'] }) {
   const variants = {
@@ -41,25 +41,7 @@ function StatusBadge({ status }: { status: ApprovalRequest['status'] }) {
 }
 
 export default function DashboardPage() {
-  const [isDark, setIsDark] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains('dark')
-    setIsDark(isDarkMode)
-    setMounted(true)
-  }, [])
-
-  const toggleTheme = () => {
-    const newDarkState = !isDark
-    setIsDark(newDarkState)
-
-    if (newDarkState) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }
+  const { theme, toggleTheme } = useTheme()
 
   const { data: requests, isLoading, error } = useQuery({
     queryKey: ['requests'],
@@ -83,24 +65,20 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-white dark:bg-card sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-                <span className="text-white font-heading font-bold text-lg">Y</span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-heading font-bold text-foreground">Requests Dashboard</h1>
-                <p className="text-sm text-foreground/60">Manage your approval workflow</p>
-              </div>
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+              <span className="text-white font-heading font-bold text-lg">Y</span>
             </div>
-            <div className="flex items-center gap-3">
+            <h1 className="text-lg font-heading font-bold text-foreground">Requests</h1>
+          </div>
+          <div className="flex items-center gap-3">
               <button
                 onClick={toggleTheme}
                 className="p-2 hover:bg-secondary rounded-lg transition-colors text-foreground"
                 aria-label="Toggle theme"
               >
-                {mounted && isDark ? (
+                {theme === 'dark' ? (
                   <Sun className="h-5 w-5" />
                 ) : (
                   <Moon className="h-5 w-5" />
@@ -121,10 +99,9 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-        </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats */}
         {requests && requests.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">

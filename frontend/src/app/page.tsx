@@ -46,7 +46,7 @@ export default function LandingPage() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="min-h-screen pt-32 pb-32 relative overflow-hidden flex items-center">
+      <section className="min-h-screen pt-20 pb-32 relative overflow-hidden flex items-center">
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl"></div>

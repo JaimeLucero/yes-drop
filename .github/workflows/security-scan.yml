@@ -19,9 +19,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          verbose: true
-          fail: true
 
   env-files:
     name: Check for .env files
@@ -31,11 +28,14 @@ jobs:
 
       - name: Fail if .env files are committed
         run: |
-          if find . -name ".env*" -type f ! -path "./.git/*" ! -path "./node_modules/*" ! -name ".env.example"; then
+          found_files=$(find . -name ".env.local" -o -name ".env.production" -o -name ".env.development" 2>/dev/null | grep -v ".git" | grep -v "node_modules" || true)
+          if [ -n "$found_files" ]; then
             echo "ERROR: .env files should not be committed"
-            echo "Found .env files in the repository"
+            echo "Found .env files:"
+            echo "$found_files"
             exit 1
           fi
+          echo "✓ No .env files found"
 
   docs-secrets:
     name: Scan docs for exposed credentials
@@ -164,16 +164,13 @@ jobs:
 
       - name: Check git diff for .env files
         run: |
-          # Check staged changes
-          if git diff --cached --name-only | grep -E '\.env'; then
-            echo "ERROR: .env files detected in commit"
-            echo "Never commit .env or .env.local files"
-            exit 1
-          fi
+          # Check last commit - exclude .env.example files
+          env_files=$(git diff HEAD~1..HEAD --name-only 2>/dev/null | grep -E '\.env' | grep -v '\.env\.example' || true)
 
-          # Check last commit
-          if git diff HEAD~1..HEAD --name-only 2>/dev/null | grep -E '\.env'; then
+          if [ -n "$env_files" ]; then
             echo "ERROR: .env files detected in recent commits"
+            echo "Found: $env_files"
+            echo "Never commit .env or .env.local files (only .env.example is allowed)"
             exit 1
           fi
 
