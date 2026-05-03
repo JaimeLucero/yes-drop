@@ -61,6 +61,7 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
   const handleSchedule = () => {
     if (!date || isTimeInPast) return
 
+    // Create Date object in user's local timezone
     const localDate = new Date(
       date.getFullYear(),
       date.getMonth(),
@@ -69,7 +70,13 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
       time.minutes
     )
 
-    onSchedule(localDate.toISOString())
+    // Convert to UTC ISO string (e.g., "2026-05-04T09:00:00.000Z")
+    // This automatically handles timezone conversion
+    const utcString = localDate.toISOString()
+    console.log(`[Timezone] User selected: ${format(localDate, 'PPP p')} (${Intl.DateTimeFormat().resolvedOptions().timeZone})`)
+    console.log(`[Timezone] Converted to UTC: ${utcString}`)
+    
+    onSchedule(utcString)
     onOpenChange(false)
   }
 

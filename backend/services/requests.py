@@ -330,13 +330,14 @@ class ApprovalRequestService:
             )
             raise HTTPException(403, "Only drafts can be scheduled")
 
-        # Parse scheduled time
+        # Parse scheduled time (expects UTC ISO string from frontend)
         try:
             logger.info(f"Parsing scheduled_send_at: {data.get('scheduled_send_at')}")
             scheduled_dt = datetime.fromisoformat(
                 data["scheduled_send_at"].replace("Z", "+00:00")
             )
-            logger.info(f"Parsed scheduled_dt: {scheduled_dt}")
+            logger.info(f"Parsed scheduled_dt (UTC): {scheduled_dt}")
+            logger.info(f"Current server time (UTC): {now}")
         except KeyError as e:
             logger.error(f"Missing key in data: {e}", exc_info=True)
             raise HTTPException(400, f"Missing field: {str(e)}")
