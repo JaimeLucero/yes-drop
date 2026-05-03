@@ -71,17 +71,56 @@ async def send_approval_email(record: dict):
     )
     reject_url = f"{settings.FRONTEND_URL}/action?token={record['token']}&action=reject"
 
+    requester_display = record.get("requester_email", record["user_id"][:8])
+    message_section = f"<p style=\"color: #666; font-size: 15px; line-height: 1.6; margin: 16px 0;\">{record['message']}</p>" if record.get("message") else ""
+    file_section = f'<p style=\"margin: 16px 0;\"><a href="{record["file_url"]}" style=\"color: #0066cc; text-decoration: none; font-weight: 500;\">📎 View attached file</a></p>' if record.get("file_url") else ""
+
     html = f"""
+    <!DOCTYPE html>
     <html>
-    <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Approval Request</h2>
-        <p><strong>{record["user_id"][:8]}...</strong> is requesting your approval for:</p>
-        <h3>{record["title"]}</h3>
-        {f"<p>{record["message"]}</p>" if record.get("message") else ""}
-        {f'<p><a href="{record["file_url"]}">View attached file</a></p>' if record.get("file_url") else ""}
-        <div style="margin-top: 24px;">
-            <a href="{approve_url}" style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-right: 12px;">Approve</a>
-            <a href="{reject_url}" style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Reject</a>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px 0;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 0 24px;">
+                <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">YesDrop</h1>
+                <p style="color: rgba(255,255,255,0.8); margin: 4px 0 0 0; font-size: 14px;">Approval request from {requester_display}</p>
+            </div>
+        </div>
+
+        <div style="max-width: 600px; margin: 0 auto; padding: 40px 24px;">
+            <div style="background: #f9fafb; border-left: 4px solid #667eea; padding: 20px; border-radius: 4px; margin-bottom: 32px;">
+                <h2 style="color: #1f2937; margin: 0 0 8px 0; font-size: 20px; font-weight: 600;">{record["title"]}</h2>
+                <p style="color: #6b7280; margin: 0; font-size: 13px;">Needs your approval</p>
+            </div>
+
+            {message_section}
+            {file_section}
+
+            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin: 32px 0;">
+                <p style="color: #6b7280; font-size: 13px; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What do you want to do?</p>
+                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                    <a href="{approve_url}" style="flex: 1; display: inline-block; background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; font-size: 14px; transition: background 0.2s;">✓ Approve</a>
+                    <a href="{reject_url}" style="flex: 1; display: inline-block; background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; font-size: 14px; transition: background 0.2s;\">✗ Reject</a>
+                </div>
+                <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;\">Or reply to this email to provide feedback</p>
+            </div>
+
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 24px; margin-top: 32px;">
+                <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;\">
+                    This approval request expires in 7 days.<br/>
+                    <a href="{settings.FRONTEND_URL}/dashboard" style="color: #667eea; text-decoration: none;\">View all requests on YesDrop</a>
+                </p>
+            </div>
+        </div>
+
+        <div style="background: #f3f4f6; padding: 24px 0; text-align: center; border-top: 1px solid #e5e7eb; margin-top: 32px;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0; max-width: 600px; margin-left: auto; margin-right: auto; padding: 0 24px;\">
+                YesDrop makes approval requests simple and seamless.<br/>
+                <a href="https://yesdrop.online" style="color: #667eea; text-decoration: none;\">Learn more</a>
+            </p>
         </div>
     </body>
     </html>
