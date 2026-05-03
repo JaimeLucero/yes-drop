@@ -90,7 +90,7 @@ async def send_approval_email(record: dict):
     await email_service.send_approval_request(
         to_email=record["approver_email"],
         request_title=record["title"],
-        requester_email=record["user_id"],
+        requester_email=record.get("requester_email") or "noreply@em.yesdrop.online",
         html_content=html,
     )
 
@@ -156,15 +156,22 @@ class ApprovalRequestService:
 
         # Send email only if sending immediately
         if status == "pending":
-            await send_approval_email(created)
+            try:
+                await send_approval_email(created)
+            except Exception as e:
+                logger.error(f"Failed to send approval email for request {req_id}: {e}", exc_info=True)
+
             # Send notification to requester
             if request.notify_requester and requester_email:
-                await email_service.send_status_notification(
-                    to_email=requester_email,
-                    request_title=request.title,
-                    old_status="draft",
-                    new_status="pending",
-                )
+                try:
+                    await email_service.send_status_notification(
+                        to_email=requester_email,
+                        request_title=request.title,
+                        old_status="draft",
+                        new_status="pending",
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send status notification for request {req_id}: {e}", exc_info=True)
 
         return to_response(created)
 
@@ -273,17 +280,24 @@ class ApprovalRequestService:
         }
 
         updated = repository.update(request_id, update_data)
-        await send_approval_email(updated)
+
+        try:
+            await send_approval_email(updated)
+        except Exception as e:
+            logger.error(f"Failed to send approval email for request {request_id}: {e}", exc_info=True)
 
         # Send notification to requester using stored email
         requester_email = req.get("requester_email")
         if requester_email:
-            await email_service.send_status_notification(
-                to_email=requester_email,
-                request_title=req["title"] or "Untitled",
-                old_status=req["status"],
-                new_status="pending",
-            )
+            try:
+                await email_service.send_status_notification(
+                    to_email=requester_email,
+                    request_title=req["title"] or "Untitled",
+                    old_status=req["status"],
+                    new_status="pending",
+                )
+            except Exception as e:
+                logger.error(f"Failed to send status notification for request {request_id}: {e}", exc_info=True)
 
         return to_response(updated)
 

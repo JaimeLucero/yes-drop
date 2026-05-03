@@ -51,8 +51,8 @@ class EmailService:
             logger.info(f"Email sent successfully, messageId: {response.message_id}")
             return True
         except Exception as e:
-            logger.error(f"Failed to send email: {e}")
-            return False
+            logger.error(f"Failed to send email: {e}", exc_info=True)
+            raise
 
     async def send_status_notification(
         self,
@@ -141,8 +141,8 @@ class EmailService:
             logger.info(f"Status notification sent: {new_status}")
             return True
         except Exception as e:
-            logger.error(f"Failed to send status notification: {e}")
-            return False
+            logger.error(f"Failed to send status notification: {e}", exc_info=True)
+            raise
 
 
 email_service = EmailService()
