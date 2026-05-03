@@ -48,6 +48,8 @@ class ApprovalRequestResponse(BaseModel):
     message: str | None
     file_url: str | None
     feedback: str | None  # Feedback/comments from approver
+    viewed_at: datetime | None = None  # Timestamp of first email open
+    view_count: int = 0  # Total number of email opens
     token: str
     status: str
     scheduled_send_at: datetime | None

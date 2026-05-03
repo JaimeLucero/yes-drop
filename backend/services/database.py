@@ -26,6 +26,15 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         if feedback_records:
             feedback = feedback_records[0].get("feedback_text")
 
+    # Get email events if request has been sent
+    viewed_at = None
+    view_count = 0
+    if record["status"] in ("pending", "approved", "rejected"):
+        email_events = repository.get_email_events(record["id"])
+        view_count = len(email_events)
+        if email_events:
+            viewed_at = email_events[0].get("created_at")
+
     return ApprovalRequestResponse(
         id=record["id"],
         user_id=record["user_id"],
@@ -35,6 +44,8 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         message=record.get("message"),
         file_url=record.get("file_url"),
         feedback=feedback,
+        viewed_at=viewed_at,
+        view_count=view_count,
         token=record["token"],
         status=record["status"],
         scheduled_send_at=record.get("scheduled_send_at"),
@@ -116,7 +127,7 @@ class ApprovalRequestRepository:
         result = (
             supabase.table("approval_requests").delete().eq("id", request_id).execute()
         )
-        return result.count > 0
+        return (result.count or 0) > 0
 
     @staticmethod
     def get_daily_sent_count(user_id: str) -> int:
@@ -164,6 +175,31 @@ class ApprovalRequestRepository:
             return result.data or []
         except Exception as e:
             logger.error(f"Error getting feedback: {e}")
+            return []
+
+    @staticmethod
+    def log_email_event(request_id: str, ip_address: str | None, user_agent: str | None) -> dict | None:
+        """Log an email open event"""
+        try:
+            result = supabase.table("request_email_events").insert({
+                "request_id": request_id,
+                "event_type": "open",
+                "ip_address": ip_address,
+                "user_agent": user_agent,
+            }).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Error logging email event: {e}")
+            return None
+
+    @staticmethod
+    def get_email_events(request_id: str) -> list[dict]:
+        """Get all email events for a request"""
+        try:
+            result = supabase.table("request_email_events").select("*").eq("request_id", request_id).order("created_at", desc=False).execute()
+            return result.data or []
+        except Exception as e:
+            logger.error(f"Error getting email events: {e}")
             return []
 
 

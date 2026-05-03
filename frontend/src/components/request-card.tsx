@@ -1,7 +1,7 @@
 'use client'
 
-import { format } from 'date-fns'
-import { Clock, CheckCircle2, XCircle, Edit, Trash2, Calendar, Send, Paperclip, Mail } from 'lucide-react'
+import { format, formatDistanceToNow } from 'date-fns'
+import { Clock, CheckCircle2, XCircle, Edit, Trash2, Calendar, Send, Paperclip, Mail, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -165,7 +165,7 @@ export function RequestCard({ request, onEdit, onDelete, onSchedule, onSendNow }
           )}
           
           {!isModifiable && (
-            <div className="mt-4 pt-4 border-t border-border/50">
+            <div className="mt-4 pt-4 border-t border-border/50 space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {request.status === 'pending' && (
                   <>
@@ -186,6 +186,15 @@ export function RequestCard({ request, onEdit, onDelete, onSchedule, onSendNow }
                   </>
                 )}
               </div>
+              {(request.status === 'pending' || request.status === 'approved' || request.status === 'rejected') && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Eye className="h-3.5 w-3.5" />
+                  {request.view_count > 0
+                    ? `Viewed ${request.view_count}× · ${formatDistanceToNow(new Date(request.viewed_at!), { addSuffix: true })}`
+                    : 'Not viewed yet'
+                  }
+                </div>
+              )}
             </div>
           )}
         </div>

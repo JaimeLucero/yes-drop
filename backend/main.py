@@ -5,13 +5,14 @@ Routes only - all business logic is in services.
 
 import logging
 
-from fastapi import FastAPI, Header, Depends, Query
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Header, Depends, Query, Request
+from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from auth.user import get_current_user
 from services.requests import service
+from services.database import repository
 from models.schemas import (
     ApprovalRequestCreate,
     ApprovalRequestDraft,
@@ -143,6 +144,28 @@ async def send_scheduled_request(
 ):
     """Internal endpoint for Edge Function to send scheduled requests"""
     return await service.send_scheduled_internal(data.get("request_id"), authorization)
+
+
+@app.get("/track/open")
+async def track_open(token: str, request: Request):
+    """Track email open via pixel. Public endpoint, no auth required."""
+    TRANSPARENT_GIF = b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x00\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b'
+
+    try:
+        req = repository.get_by_token(token)
+        if req:
+            ip_address = request.client.host if request.client else None
+            user_agent = request.headers.get("user-agent")
+            repository.log_email_event(req["id"], ip_address, user_agent)
+            logger.info(f"Logged email open for request {req['id']}")
+    except Exception as e:
+        logger.error(f"Error tracking email open: {e}")
+
+    return Response(
+        content=TRANSPARENT_GIF,
+        media_type="image/gif",
+        headers={"Cache-Control": "no-store"}
+    )
 
 
 @app.get("/health")

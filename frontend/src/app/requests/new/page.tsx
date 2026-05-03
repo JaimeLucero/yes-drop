@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createRequest, uploadFile, createDraft, scheduleRequest } from '@/lib/api'
 import { Upload, AlertCircle, File, CheckCircle, Calendar } from 'lucide-react'
+import { ScheduleModal } from '@/components/schedule-modal'
+import { format } from 'date-fns'
 
 export default function NewRequestPage() {
   const router = useRouter()
@@ -20,6 +22,7 @@ export default function NewRequestPage() {
   const [dragOver, setDragOver] = useState(false)
   const [action, setAction] = useState<'send' | 'draft' | 'schedule'>('send')
   const [scheduledTime, setScheduledTime] = useState('')
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -295,21 +298,22 @@ export default function NewRequestPage() {
           {/* Schedule Time Picker */}
           {action === 'schedule' && (
             <div className="group">
-              <label htmlFor="scheduled_time" className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
+              <label className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
                 When should this be sent? <span className="text-red-500">*</span>
               </label>
-              <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setScheduleModalOpen(true)}
+                className="w-full flex items-center gap-2 px-5 py-3 bg-background border-2 border-border rounded-xl text-foreground hover:border-primary/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-left"
+              >
                 <Calendar className="h-5 w-5 text-foreground/60" />
-                <input
-                  id="scheduled_time"
-                  type="datetime-local"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  required={action === 'schedule'}
-                  className="flex-1 px-5 py-3 bg-background border-2 border-border rounded-xl text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <p className="text-xs text-foreground/50 mt-2">The request will be sent at this date and time (UTC)</p>
+                <span className={scheduledTime ? 'text-foreground' : 'text-foreground/40'}>
+                  {scheduledTime
+                    ? format(new Date(scheduledTime), 'PPP p')
+                    : 'Select date and time'}
+                </span>
+              </button>
+              <p className="text-xs text-foreground/50 mt-2">The request will be sent at this date and time</p>
             </div>
           )}
 
@@ -350,6 +354,14 @@ export default function NewRequestPage() {
             </button>
           </div>
         </form>
+
+        {/* Schedule Modal */}
+        <ScheduleModal
+          open={scheduleModalOpen}
+          onOpenChange={setScheduleModalOpen}
+          onSchedule={setScheduledTime}
+          initialDate={scheduledTime || undefined}
+        />
       </main>
     </div>
   )

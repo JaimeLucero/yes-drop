@@ -75,6 +75,9 @@ async def send_approval_email(record: dict):
     message_section = f"<p style=\"color: #666; font-size: 15px; line-height: 1.6; margin: 16px 0;\">{record['message']}</p>" if record.get("message") else ""
     file_section = f'<p style=\"margin: 16px 0;\"><a href="{record["file_url"]}" style=\"color: #0066cc; text-decoration: none; font-weight: 500;\">📎 View attached file</a></p>' if record.get("file_url") else ""
 
+    # Tracking pixel for email opens
+    tracking_pixel = f'<img src="{settings.BACKEND_URL}/track/open?token={record["token"]}" width="1" height="1" alt="" style="display:none;opacity:0;" />'
+
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -122,6 +125,8 @@ async def send_approval_email(record: dict):
                 <a href="https://yesdrop.online" style="color: #667eea; text-decoration: none;\">Learn more</a>
             </p>
         </div>
+
+        {tracking_pixel}
     </body>
     </html>
     """
@@ -168,6 +173,9 @@ class ApprovalRequestService:
             scheduled_dt = datetime.fromisoformat(
                 request.scheduled_send_at.replace("Z", "+00:00")
             )
+            # Ensure timezone-aware comparison
+            if scheduled_dt.tzinfo is None:
+                scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
             if scheduled_dt <= now:
                 raise HTTPException(400, "scheduled_send_at must be in the future")
         else:

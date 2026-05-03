@@ -5,11 +5,14 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL!
 export interface ApprovalRequest {
   id: string
   user_id: string
+  requester_email: string | null
   approver_email: string | null
   title: string | null
   message: string | null
   file_url: string | null
   feedback: string | null
+  viewed_at: string | null
+  view_count: number
   token: string
   status: 'draft' | 'scheduled' | 'pending' | 'approved' | 'rejected'
   scheduled_send_at: string | null

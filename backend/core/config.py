@@ -20,6 +20,7 @@ class Settings:
     DATABASE_URL: str | None = os.getenv("DATABASE_URL")
 
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8000")
 
     CRON_SECRET: str | None = os.getenv("CRON_SECRET")
 
