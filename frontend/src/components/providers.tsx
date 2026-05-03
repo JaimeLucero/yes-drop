@@ -1,7 +1,6 @@
 'use client'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createClient } from '@supabase/ssr'
 import { useState } from 'react'
 import { ThemeProvider } from './theme-provider'
 
