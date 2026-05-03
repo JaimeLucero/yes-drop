@@ -10,9 +10,18 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 # Initialize Supabase client
-supabase: Client = create_client(
-    settings.SUPABASE_URL or "", settings.SUPABASE_SERVICE_ROLE_KEY or ""
-)
+if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
+    logger.warning("⚠️  Supabase credentials not configured. Database operations will fail.")
+    supabase = None
+else:
+    try:
+        supabase: Client = create_client(
+            settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY
+        )
+        logger.info("✓ Supabase client initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize Supabase client: {e}")
+        supabase = None
 
 
 def to_response(record: dict) -> "ApprovalRequestResponse":
