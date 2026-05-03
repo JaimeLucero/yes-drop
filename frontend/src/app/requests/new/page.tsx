@@ -3,8 +3,8 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createRequest, uploadFile } from '@/lib/api'
-import { Upload, AlertCircle, File, CheckCircle } from 'lucide-react'
+import { createRequest, uploadFile, createDraft, scheduleRequest } from '@/lib/api'
+import { Upload, AlertCircle, File, CheckCircle, Calendar } from 'lucide-react'
 
 export default function NewRequestPage() {
   const router = useRouter()
@@ -18,9 +18,19 @@ export default function NewRequestPage() {
   const [fileUrl, setFileUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [action, setAction] = useState<'send' | 'draft' | 'schedule'>('send')
+  const [scheduledTime, setScheduledTime] = useState('')
 
   const mutation = useMutation({
-    mutationFn: createRequest,
+    mutationFn: async (data: any) => {
+      if (action === 'draft') {
+        return createDraft(data)
+      } else if (action === 'schedule') {
+        return createRequest({ ...data, scheduled_send_at: scheduledTime })
+      } else {
+        return createRequest(data)
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
       router.push('/dashboard')
@@ -66,6 +76,9 @@ export default function NewRequestPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (action === 'schedule' && !scheduledTime) {
+      return
+    }
     mutation.mutate({
       approver_email: approverEmail,
       title,
@@ -214,6 +227,92 @@ export default function NewRequestPage() {
             </div>
           </div>
 
+          {/* Action Selection */}
+          <div className="group">
+            <label className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
+              What do you want to do?
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                action === 'send'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50'
+              }`}>
+                <input
+                  type="radio"
+                  name="action"
+                  value="send"
+                  checked={action === 'send'}
+                  onChange={(e) => setAction(e.target.value as 'send' | 'draft' | 'schedule')}
+                  className="mr-3"
+                />
+                <div>
+                  <p className="font-semibold text-foreground">Send Now</p>
+                  <p className="text-xs text-foreground/60">Send immediately to approver</p>
+                </div>
+              </label>
+
+              <label className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                action === 'draft'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50'
+              }`}>
+                <input
+                  type="radio"
+                  name="action"
+                  value="draft"
+                  checked={action === 'draft'}
+                  onChange={(e) => setAction(e.target.value as 'send' | 'draft' | 'schedule')}
+                  className="mr-3"
+                />
+                <div>
+                  <p className="font-semibold text-foreground">Save Draft</p>
+                  <p className="text-xs text-foreground/60">Save for later</p>
+                </div>
+              </label>
+
+              <label className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                action === 'schedule'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/50'
+              }`}>
+                <input
+                  type="radio"
+                  name="action"
+                  value="schedule"
+                  checked={action === 'schedule'}
+                  onChange={(e) => setAction(e.target.value as 'send' | 'draft' | 'schedule')}
+                  className="mr-3"
+                />
+                <div>
+                  <p className="font-semibold text-foreground">Schedule</p>
+                  <p className="text-xs text-foreground/60">Send at a specific time</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Schedule Time Picker */}
+          {action === 'schedule' && (
+            <div className="group">
+              <label htmlFor="scheduled_time" className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
+                When should this be sent? <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-foreground/60" />
+                <input
+                  id="scheduled_time"
+                  type="datetime-local"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  required={action === 'schedule'}
+                  className="flex-1 px-5 py-3 bg-background border-2 border-border rounded-xl text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+              <p className="text-xs text-foreground/50 mt-2">The request will be sent at this date and time (UTC)</p>
+            </div>
+          )}
+
           {/* Error Message */}
           {mutation.isError && (
             <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
@@ -226,16 +325,20 @@ export default function NewRequestPage() {
           <div className="flex items-center gap-3 pt-8 border-t-2 border-border">
             <button
               type="submit"
-              disabled={mutation.isPending || !approverEmail || !title}
+              disabled={mutation.isPending || !approverEmail || !title || (action === 'schedule' && !scheduledTime)}
               className="group inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold rounded-xl hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {mutation.isPending ? (
                 <>
                   <div className="inline-block animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  Creating...
+                  {action === 'send' ? 'Sending...' : action === 'draft' ? 'Saving...' : 'Scheduling...'}
                 </>
               ) : (
-                'Send Request'
+                <>
+                  {action === 'send' && 'Send Request'}
+                  {action === 'draft' && 'Save Draft'}
+                  {action === 'schedule' && 'Schedule Request'}
+                </>
               )}
             </button>
             <button

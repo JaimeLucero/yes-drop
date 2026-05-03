@@ -9,6 +9,7 @@ export interface ApprovalRequest {
   title: string | null
   message: string | null
   file_url: string | null
+  feedback: string | null
   token: string
   status: 'draft' | 'scheduled' | 'pending' | 'approved' | 'rejected'
   scheduled_send_at: string | null

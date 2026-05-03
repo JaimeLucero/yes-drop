@@ -421,7 +421,7 @@ class ApprovalRequestService:
         )
 
     @staticmethod
-    async def process_action(token: str, action: str) -> tuple[str, str]:
+    async def process_action(token: str, action: str, feedback: str | None = None) -> tuple[str, str]:
         """Process approve/reject action. Returns (new_status, html_response)"""
         if action not in ("approve", "reject"):
             raise HTTPException(400, "Invalid action")
@@ -435,10 +435,12 @@ class ApprovalRequestService:
         new_status = "approved" if action == "approve" else "rejected"
         now = datetime.now(timezone.utc)
 
-        # Update status
-        repository.update(
-            req["id"], {"status": new_status, "updated_at": now.isoformat()}
-        )
+        # Update status and feedback
+        update_data = {"status": new_status, "updated_at": now.isoformat()}
+        if feedback:
+            update_data["feedback"] = feedback
+
+        repository.update(req["id"], update_data)
 
         # Send notification to requester using stored email
         requester_email = req.get("requester_email")

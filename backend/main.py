@@ -112,10 +112,10 @@ async def get_daily_limit(
 
 
 @app.get("/action")
-async def action(token: str, action: str):
+async def action(token: str, action: str, feedback: str | None = Query(None)):
     """Handle approve/reject action (public endpoint)"""
     try:
-        new_status, html = await service.process_action(token, action)
+        new_status, html = await service.process_action(token, action, feedback)
         return HTMLResponse(html)
     except HTTPException as e:
         if e.status_code == 400:

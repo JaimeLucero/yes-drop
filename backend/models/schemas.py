@@ -41,6 +41,7 @@ class ApprovalRequestResponse(BaseModel):
     title: str | None
     message: str | None
     file_url: str | None
+    feedback: str | None  # Feedback/comments from approver
     token: str
     status: str
     scheduled_send_at: datetime | None
