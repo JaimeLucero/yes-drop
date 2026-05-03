@@ -18,6 +18,7 @@ from models.schemas import (
     ApprovalRequestUpdate,
     ApprovalRequestResponse,
     DailyLimitResponse,
+    ScheduleRequest,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -59,11 +60,11 @@ async def create_draft(
 @app.put("/api/requests/{request_id}/schedule", response_model=ApprovalRequestResponse)
 async def schedule_request(
     request_id: str,
-    data: dict,
+    data: ScheduleRequest,
     user_id: str = Depends(get_current_user),
 ):
     """Schedule a draft for sending"""
-    return await service.schedule_request(request_id, data, user_id)
+    return await service.schedule_request(request_id, data.dict(), user_id)
 
 
 @app.post("/api/requests/{request_id}/send-now", response_model=ApprovalRequestResponse)

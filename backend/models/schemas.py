@@ -33,6 +33,12 @@ class ApprovalRequestUpdate(BaseModel):
     notify_requester: bool | None = None
 
 
+class ScheduleRequest(BaseModel):
+    """Schedule a draft request"""
+
+    scheduled_send_at: str
+
+
 class ApprovalRequestResponse(BaseModel):
     id: str
     user_id: str
