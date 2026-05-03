@@ -21,6 +21,7 @@ class Settings:
 
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8000")
+    CORS_ORIGINS: list[str] = os.getenv("FRONTEND_URL", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 
     CRON_SECRET: str | None = os.getenv("CRON_SECRET")
 
