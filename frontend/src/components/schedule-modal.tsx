@@ -127,7 +127,7 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
                 onChange={(e) => setTime({ ...time, minutes: parseInt(e.target.value) })}
                 className="h-10 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {[0, 15, 30, 45].map((m) => {
+                {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => {
                   const isDisabled = date &&
                     date.getTime() === todayLocal.getTime() &&
                     time.hours === currentLocalHours &&
