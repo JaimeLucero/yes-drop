@@ -1,0 +1,49 @@
+repos:
+  # Detect secrets and private keys
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        name: Detect secrets with gitleaks
+        description: Scans git diff to detect secrets
+        entry: gitleaks detect --verbose --log-level debug --redact
+        language: golang
+        stages: [commit]
+        pass_filenames: false
+
+  # Prevent .env files from being committed
+  - repo: local
+    hooks:
+      - id: forbidden-files
+        name: Prevent .env files from being committed
+        entry: bash -c 'if git diff --cached --name-only | grep -E "\.env|\.env\.local|secrets\."; then echo "ERROR: .env or secrets files cannot be committed"; exit 1; fi'
+        language: system
+        stages: [commit]
+        pass_filenames: false
+
+      - id: no-credentials
+        name: Detect credentials in code
+        entry: bash -c '
+          if git diff --cached -U0 | grep -E "^+.*eyJ[A-Za-z0-9_-]+\.|^+.*AKIA[0-9A-Z]{16}|^+.*supabase\.co[^[]*$" | grep -v "[your-\|example\|\[placeholder\|[project-id]"; then
+            echo "ERROR: Detected potential credentials in changes"
+            echo "Use placeholders like [your-project-id], [your-key], etc."
+            exit 1
+          fi
+        '
+        language: system
+        stages: [commit]
+        pass_filenames: false
+
+      - id: docs-no-secrets
+        name: Check docs don'"'"'t have exposed credentials
+        entry: bash -c '
+          if git diff --cached docs/ | grep -E "^+.*[a-zA-Z0-9]{40,}|^+.*Bearer ey|^+.*AKIA[0-9A-Z]{16}" | grep -v "[your-\|example\|\["; then
+            echo "ERROR: Potential credentials in docs"
+            exit 1
+          fi
+        '
+        language: system
+        stages: [commit]
+        pass_filenames: false
+
+default_stages: [commit, push]
