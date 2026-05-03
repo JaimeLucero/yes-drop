@@ -113,7 +113,7 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
                 className="h-10 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {Array.from({ length: 24 }, (_, i) => {
-                  const isDisabled = date && date.getTime() === todayLocal.getTime() && i <= currentLocalHours
+                  const isDisabled = date && date.getTime() === todayLocal.getTime() && i < currentLocalHours
                   return (
                     <option key={i} value={i} disabled={isDisabled}>
                       {i.toString().padStart(2, '0')}
