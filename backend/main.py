@@ -64,7 +64,14 @@ async def schedule_request(
     user_id: str = Depends(get_current_user),
 ):
     """Schedule a draft for sending"""
-    return await service.schedule_request(request_id, data.dict(), user_id)
+    try:
+        logger.info(f"Schedule request: {request_id}, data: {data.dict()}, user_id: {user_id}")
+        result = await service.schedule_request(request_id, data.dict(), user_id)
+        logger.info(f"Schedule successful for request {request_id}")
+        return result
+    except Exception as e:
+        logger.error(f"Schedule request failed: {str(e)}", exc_info=True)
+        raise
 
 
 @app.post("/api/requests/{request_id}/send-now", response_model=ApprovalRequestResponse)

@@ -244,22 +244,39 @@ class ApprovalRequestService:
         request_id: str, data: dict, user_id: str
     ) -> ApprovalRequestResponse:
         """Schedule a draft for sending"""
+        logger.info(f"Starting schedule_request for {request_id}")
+
         req = repository.get_by_id(request_id)
+        logger.info(f"Retrieved request: {req}")
         if not req:
+            logger.error(f"Request not found: {request_id}")
             raise HTTPException(404, "Request not found")
 
         if req["user_id"] != user_id:
+            logger.error(f"User {user_id} does not own request {request_id}")
             raise HTTPException(404, "Request not found")
 
         if req["status"] not in ("draft", "scheduled"):
+            logger.error(f"Request {request_id} status is {req['status']}, cannot schedule")
             raise HTTPException(403, "Only drafts can be scheduled")
 
         # Parse scheduled time
-        scheduled_dt = datetime.fromisoformat(
-            data["scheduled_send_at"].replace("Z", "+00:00")
-        )
+        try:
+            logger.info(f"Parsing scheduled_send_at: {data.get('scheduled_send_at')}")
+            scheduled_dt = datetime.fromisoformat(
+                data["scheduled_send_at"].replace("Z", "+00:00")
+            )
+            logger.info(f"Parsed scheduled_dt: {scheduled_dt}")
+        except KeyError as e:
+            logger.error(f"Missing key in data: {e}", exc_info=True)
+            raise HTTPException(400, f"Missing field: {str(e)}")
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Invalid scheduled_send_at format: {data.get('scheduled_send_at')}, error: {e}", exc_info=True)
+            raise HTTPException(400, f"Invalid datetime format: {str(e)}")
+
         now = datetime.now(timezone.utc)
         if scheduled_dt <= now:
+            logger.error(f"scheduled_dt {scheduled_dt} is not in the future (now: {now})")
             raise HTTPException(400, "scheduled_send_at must be in the future")
 
         # Update request
@@ -268,19 +285,24 @@ class ApprovalRequestService:
             "scheduled_send_at": scheduled_dt.isoformat(),
             "updated_at": now.isoformat(),
         }
+        logger.info(f"Updating request {request_id} with: {update_data}")
 
         updated = repository.update(request_id, update_data)
+        logger.info(f"Updated request: {updated}")
 
         # Send notification using stored requester email
         requester_email = req.get("requester_email")
         if requester_email:
-            await email_service.send_status_notification(
-                to_email=requester_email,
-                request_title=req["title"] or "Untitled",
-                old_status="draft",
-                new_status="scheduled",
-                scheduled_time=scheduled_dt.strftime("%B %d, %Y at %I:%M %p UTC"),
-            )
+            try:
+                await email_service.send_status_notification(
+                    to_email=requester_email,
+                    request_title=req["title"] or "Untitled",
+                    old_status="draft",
+                    new_status="scheduled",
+                    scheduled_time=scheduled_dt.strftime("%B %d, %Y at %I:%M %p UTC"),
+                )
+            except Exception as e:
+                logger.error(f"Failed to send status notification: {e}", exc_info=True)
 
         return to_response(updated)
 
