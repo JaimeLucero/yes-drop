@@ -108,15 +108,23 @@ class ApprovalRequestRepository:
     def get_scheduled_due() -> list[dict]:
         """Get all scheduled requests that are due to be sent"""
         now = datetime.now(timezone.utc).isoformat()
-        result = (
-            supabase.table("approval_requests")
-            .select("*")
-            .eq("status", "scheduled")
-            .lte("scheduled_send_at", now)
-            .order("scheduled_send_at", asc=True)
-            .execute()
-        )
-        return result.data or []
+        try:
+            result = (
+                supabase.table("approval_requests")
+                .select("*")
+                .eq("status", "scheduled")
+                .lte("scheduled_send_at", now)
+                .order("scheduled_send_at", asc=True)
+                .execute()
+            )
+            requests = result.data or []
+            logger.debug(f"Scheduler check: NOW={now}, Found {len(requests)} scheduled request(s) due")
+            for req in requests:
+                logger.debug(f"  - {req['id']}: scheduled_send_at={req.get('scheduled_send_at')}")
+            return requests
+        except Exception as e:
+            logger.error(f"Error getting scheduled requests: {e}", exc_info=True)
+            return []
 
     @staticmethod
     def update(request_id: str, data: dict) -> dict | None:
