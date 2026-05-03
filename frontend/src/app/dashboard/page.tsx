@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchRequests, deleteRequest, sendRequestNow, scheduleRequest, type ApprovalRequest } from '@/lib/api'
+import { fetchRequests, deleteRequest, sendRequestNow, scheduleRequest, updateRequest, type ApprovalRequest } from '@/lib/api'
 import { DailyLimitIndicator } from '@/components/daily-limit-indicator'
 import { RequestFilters, type RequestStatusFilter } from '@/components/request-filters'
 import { RequestCard } from '@/components/request-card'
 import { ScheduleModal } from '@/components/schedule-modal'
+import { EditRequestModal } from '@/components/edit-request-modal'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
@@ -15,6 +16,7 @@ import { toast } from 'sonner'
 export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<RequestStatusFilter>('all')
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null)
   const queryClient = useQueryClient()
 
@@ -48,7 +50,7 @@ export default function DashboardPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: ({ id, datetime }: { id: string; datetime: string }) => 
+    mutationFn: ({ id, datetime }: { id: string; datetime: string }) =>
       scheduleRequest(id, datetime),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
@@ -56,6 +58,20 @@ export default function DashboardPage() {
     },
     onError: (error) => {
       toast.error(`Failed to schedule: ${error.message}`)
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      updateRequest(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['requests'] })
+      setEditModalOpen(false)
+      setSelectedRequest(null)
+      toast.success('Request updated successfully')
+    },
+    onError: (error) => {
+      toast.error(`Failed to update: ${error.message}`)
     },
   })
 
@@ -67,6 +83,20 @@ export default function DashboardPage() {
 
   const handleSendNow = (request: ApprovalRequest) => {
     sendNowMutation.mutate(request.id)
+  }
+
+  const handleEdit = (request: ApprovalRequest) => {
+    setSelectedRequest(request)
+    setEditModalOpen(true)
+  }
+
+  const handleEditSubmit = (data: any) => {
+    if (selectedRequest) {
+      updateMutation.mutate({
+        id: selectedRequest.id,
+        data,
+      })
+    }
   }
 
   const handleSchedule = (request: ApprovalRequest) => {
@@ -154,10 +184,7 @@ export default function DashboardPage() {
               <RequestCard
                 key={req.id}
                 request={req}
-                onEdit={() => {
-                  // TODO: Implement edit modal
-                  toast.info('Edit feature coming soon')
-                }}
+                onEdit={() => handleEdit(req)}
                 onDelete={() => handleDelete(req)}
                 onSchedule={() => handleSchedule(req)}
                 onSendNow={() => handleSendNow(req)}
@@ -173,6 +200,15 @@ export default function DashboardPage() {
         onOpenChange={setScheduleModalOpen}
         onSchedule={handleScheduleSubmit}
         initialDate={selectedRequest?.scheduled_send_at || undefined}
+      />
+
+      {/* Edit Modal */}
+      <EditRequestModal
+        request={selectedRequest}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onSave={handleEditSubmit}
+        isLoading={updateMutation.isPending}
       />
     </div>
   )
