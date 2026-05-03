@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: yesdrop-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: |
+      pip install -r backend/requirements.txt
+    startCommand: |
+      uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: YesDrop
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      - key: SUPABASE_AUDIENCE
+        value: authenticated
+      - key: FRONTEND_URL
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+    healthCheckPath: /health

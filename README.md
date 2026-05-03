@@ -103,3 +103,39 @@ By default, uses Brevo's shared sender domain. For production:
 1. Authenticate your domain in Brevo dashboard
 2. Set `BREVO_SENDER_EMAIL` in `.env`
 3. Emails will send from your domain with reply-to set to requester
+
+## Deployment
+
+### Frontend (Vercel)
+
+1. Push code to GitHub
+2. Import repo to [Vercel](https://vercel.com/new)
+3. Set **Root Directory** to `frontend`
+4. Add environment variables from "Frontend (.env.local)" section
+5. Add custom domain in Vercel dashboard → Settings → Domains
+
+### Backend (Render)
+
+1. Push code to GitHub
+2. Create new **Web Service** on [Render](https://render.com)
+3. Connect your GitHub repo
+4. Configure:
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Environment**: Python 3
+5. Add environment variables from "Backend (.env)" section:
+   - `BREVO_API_KEY`
+   - `SUPABASE_JWKS_URL` (e.g., `https://your-project.supabase.co/auth/v1/.well-known/jwks.json`)
+   - `SUPABASE_AUDIENCE` (e.g., `authenticated`)
+   - `FRONTEND_URL` (your Vercel domain, e.g., `https://yesdrop.online`)
+   - `CRON_SECRET` (generate a random secret)
+6. Deploy
+
+Alternatively, use the provided `render.yaml` file for Infrastructure as Code setup.
+
+### Post-Deployment
+
+1. Update frontend's `NEXT_PUBLIC_BACKEND_URL` to your Render service URL
+2. Test the full OAuth flow end-to-end
+3. Monitor logs in both Vercel and Render dashboards
