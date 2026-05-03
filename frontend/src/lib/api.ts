@@ -132,18 +132,12 @@ export async function createDraft(data: {
 
 export async function scheduleRequest(
   requestId: string,
-  scheduledSendAt: string,
-  followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number },
-  deadlineDays?: number
+  scheduledSendAt: string
 ): Promise<ApprovalRequest> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
   if (!session) throw new Error('Not authenticated')
-
-  const body: any = { scheduled_send_at: scheduledSendAt }
-  if (followUpStrategy !== undefined) body.follow_up_strategy = followUpStrategy
-  if (deadlineDays !== undefined) body.deadline_days = deadlineDays
 
   const response = await fetch(`${BACKEND_URL}/api/requests/${requestId}/schedule`, {
     method: 'PUT',
@@ -151,7 +145,7 @@ export async function scheduleRequest(
       Authorization: `Bearer ${session.access_token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ scheduled_send_at: scheduledSendAt }),
   })
 
   if (!response.ok) {

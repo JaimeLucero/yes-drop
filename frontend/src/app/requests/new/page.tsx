@@ -467,9 +467,7 @@ export default function NewRequestPage() {
         <ScheduleModal
           open={scheduleModalOpen}
           onOpenChange={setScheduleModalOpen}
-          onSchedule={(datetime, strategy, deadlineDaysVal) => {
-            setScheduledTime(datetime)
-          }}
+          onSchedule={setScheduledTime}
           initialDate={scheduledTime || undefined}
         />
 
