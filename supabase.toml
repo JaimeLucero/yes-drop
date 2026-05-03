@@ -33,12 +33,15 @@ file_size_limit = "50MiB"
 [functions]
 [functions.send-scheduled-requests]
 verify_jwt = false
+# Schedule this edge function to run every 5 minutes (UTC)
+schedule = { cron = "*/5 * * * *", timezone = "UTC" }
 
 [functions.check-deadlines-followups]
 verify_jwt = false
+# Schedule this edge function to run every 5 minutes (UTC)
+schedule = { cron = "*/5 * * * *", timezone = "UTC" }
 
-# Note: Cron schedules must be configured in Supabase Dashboard
-# Go to: https://supabase.com/dashboard/project/aurhheqwpfpngqmhegvx/functions
-# For each function, set up cron schedule:
-# - send-scheduled-requests: */5 * * * * (every 5 minutes)
-# - check-deadlines-followups: 0 * * * * (every hour)
+# Note: Supabase applies schedules either from the Dashboard or via the Supabase CLI.
+# These schedule keys are added here for repository documentation and for tools that
+# sync configuration. Supabase itself uses UTC for function invocations; specifying
+# timezone = "UTC" ensures clarity.
