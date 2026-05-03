@@ -2,10 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { fetchRequests, type ApprovalRequest } from '@/lib/api'
-import { LogOut, Plus, Clock, CheckCircle2, XCircle, Zap, TrendingUp, Moon, Sun } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, TrendingUp, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { signOut } from '@/lib/supabase'
-import { useTheme } from '@/components/theme-provider'
 
 function StatusBadge({ status }: { status: ApprovalRequest['status'] }) {
   const variants = {
@@ -41,18 +39,11 @@ function StatusBadge({ status }: { status: ApprovalRequest['status'] }) {
 }
 
 export default function DashboardPage() {
-  const { theme, toggleTheme } = useTheme()
-
   const { data: requests, isLoading, error } = useQuery({
     queryKey: ['requests'],
     queryFn: fetchRequests,
     refetchInterval: 5000,
   })
-
-  const handleSignOut = async () => {
-    await signOut()
-    window.location.href = '/login'
-  }
 
   const stats = {
     total: requests?.length || 0,
@@ -63,44 +54,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-white dark:bg-card sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <span className="text-white font-heading font-bold text-lg">Y</span>
-            </div>
-            <h1 className="text-lg font-heading font-bold text-foreground">Requests</h1>
-          </div>
-          <div className="flex items-center gap-3">
-              <button
-                onClick={toggleTheme}
-                className="p-2 hover:bg-secondary rounded-lg transition-colors text-foreground"
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="h-5 w-5" />
-                ) : (
-                  <Moon className="h-5 w-5" />
-                )}
-              </button>
-              <Link href="/requests/new">
-                <button className="group inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all">
-                  <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform" />
-                  New Request
-                </button>
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-secondary text-secondary-foreground font-medium rounded-lg border border-border hover:bg-secondary/80 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </button>
-            </div>
-          </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats */}
         {requests && requests.length > 0 && (

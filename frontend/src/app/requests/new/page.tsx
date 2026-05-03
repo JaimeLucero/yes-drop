@@ -4,14 +4,12 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createRequest, uploadFile } from '@/lib/api'
-import { Upload, ChevronLeft, AlertCircle, File, CheckCircle, Moon, Sun } from 'lucide-react'
-import { useTheme } from '@/components/theme-provider'
+import { Upload, AlertCircle, File, CheckCircle } from 'lucide-react'
 
 export default function NewRequestPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { theme, toggleTheme } = useTheme()
 
   const [approverEmail, setApproverEmail] = useState('')
   const [title, setTitle] = useState('')
@@ -78,31 +76,6 @@ export default function NewRequestPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-white dark:bg-card sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="inline-flex items-center gap-2 text-primary hover:text-primary/80 font-semibold group"
-          >
-            <ChevronLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-            Back
-          </button>
-          <h1 className="text-lg font-heading font-bold text-foreground">New Request</h1>
-          <button
-            onClick={toggleTheme}
-            className="p-2 hover:bg-secondary rounded-lg transition-colors text-foreground"
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-      </header>
-
       {/* Form */}
       <main className="max-w-3xl mx-auto px-6 py-8">
         <form onSubmit={handleSubmit} className="space-y-10">

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/supabase'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle, Zap, Shield, BarChart3, Mail, Upload } from 'lucide-react'
-import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 
 export default function LandingPage() {
@@ -43,8 +42,6 @@ export default function LandingPage() {
 
   return (
     <div className="bg-background text-foreground">
-      <Navbar />
-
       {/* Hero Section */}
       <section className="min-h-screen pt-20 pb-32 relative overflow-hidden flex items-center">
         {/* Animated background elements */}
