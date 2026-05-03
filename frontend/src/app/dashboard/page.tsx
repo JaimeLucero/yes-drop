@@ -6,7 +6,7 @@ import { fetchRequests, deleteRequest, sendRequestNow, scheduleRequest, updateRe
 import { DailyLimitIndicator } from '@/components/daily-limit-indicator'
 import { RequestFilters, type RequestStatusFilter } from '@/components/request-filters'
 import { RequestCard } from '@/components/request-card'
-import { ScheduleModal } from '@/components/schedule-modal'
+import { RescheduleModal } from '@/components/reschedule-modal'
 import { EditRequestModal } from '@/components/edit-request-modal'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
@@ -51,8 +51,13 @@ export default function DashboardPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: ({ id, datetime }: { id: string; datetime: string }) =>
-      scheduleRequest(id, datetime),
+    mutationFn: ({ id, datetime, deadlineDays, followUpStrategy }: { 
+      id: string; 
+      datetime: string;
+      deadlineDays?: number;
+      followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number };
+    }) =>
+      scheduleRequest(id, datetime, followUpStrategy, deadlineDays),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
       setScheduleModalOpen(false)
@@ -107,11 +112,13 @@ export default function DashboardPage() {
     setScheduleModalOpen(true)
   }
 
-  const handleScheduleSubmit = (datetime: string) => {
+  const handleScheduleSubmit = (datetime: string, deadlineDays?: number, followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number }) => {
     if (selectedRequest) {
       scheduleMutation.mutate({
         id: selectedRequest.id,
         datetime,
+        deadlineDays,
+        followUpStrategy,
       })
     }
   }
@@ -195,12 +202,14 @@ export default function DashboardPage() {
         )}
       </main>
 
-      {/* Schedule Modal */}
-      <ScheduleModal
+      {/* Reschedule Modal */}
+      <RescheduleModal
         open={scheduleModalOpen}
         onOpenChange={setScheduleModalOpen}
-        onSchedule={handleScheduleSubmit}
+        onReschedule={handleScheduleSubmit}
         initialDate={selectedRequest?.scheduled_send_at || undefined}
+        initialDeadline={selectedRequest?.deadline || undefined}
+        initialFollowUp={selectedRequest?.follow_up_strategy || null}
       />
 
       {/* Edit Modal */}

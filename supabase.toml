@@ -34,6 +34,11 @@ file_size_limit = "50MiB"
 [functions.send-scheduled-requests]
 verify_jwt = false
 
-# Note: Cron schedule must be configured in Supabase Dashboard
+[functions.check-deadlines-followups]
+verify_jwt = false
+
+# Note: Cron schedules must be configured in Supabase Dashboard
 # Go to: https://supabase.com/dashboard/project/aurhheqwpfpngqmhegvx/functions
-# Click on "send-scheduled-requests" → "Invoke schedule" → Set to run every 5 minutes
+# For each function, set up cron schedule:
+# - send-scheduled-requests: */5 * * * * (every 5 minutes)
+# - check-deadlines-followups: 0 * * * * (every hour)

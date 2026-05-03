@@ -280,3 +280,57 @@ async def track_open(token: str, request: Request):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/api/internal/notify-ignored")
+async def notify_ignored(
+    data: dict,
+    authorization: str | None = Header(None),
+):
+    """Internal endpoint to send ignored notification"""
+    expected = f"Bearer {settings.CRON_SECRET or ''}"
+    if authorization != expected:
+        raise HTTPException(401, "Unauthorized")
+
+    try:
+        await email_service.send_ignored_notification(
+            to_email=data["requester_email"],
+            request_title=data["request_title"] or "Untitled",
+            deadline=data["deadline"],
+        )
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Failed to send ignored notification: {e}")
+        raise HTTPException(500, str(e))
+
+
+@app.post("/api/internal/send-followup")
+async def send_followup(
+    data: dict,
+    authorization: str | None = Header(None),
+):
+    """Internal endpoint to send follow-up emails"""
+    expected = f"Bearer {settings.CRON_SECRET or ''}"
+    if authorization != expected:
+        raise HTTPException(401, "Unauthorized")
+
+    request_id = data.get("request_id")
+    followup_type = data.get("followup_type")
+
+    req = repository.get_by_id(request_id)
+    if not req:
+        raise HTTPException(404, "Request not found")
+
+    try:
+        # Send follow-up email
+        await send_approval_email(req, is_followup=True, followup_type=followup_type)
+
+        # Record the follow-up event
+        event_type = f"followup_{followup_type}"
+        repository.add_email_event(request_id, event_type)
+
+        logger.info(f"Sent {followup_type} follow-up for request {request_id}")
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Failed to send follow-up: {e}")
+        raise HTTPException(500, str(e))

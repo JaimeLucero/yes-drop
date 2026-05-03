@@ -72,6 +72,11 @@ export default function NewRequestPage() {
     return Math.max(1, diffDays)
   }
 
+  function toUTCISOString(date: Date): string {
+    // Convert local date to UTC ISO string
+    return date.toISOString()
+  }
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return

@@ -26,12 +26,15 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Find scheduled requests that should be sent now
-    const now = new Date().toISOString()
+    // IMPORTANT: All times are in UTC (ISO 8601 format)
+    // scheduled_send_at is stored as TIMESTAMPTZ in database (UTC)
+    const now = new Date().toISOString() // Returns UTC time in ISO format
+    console.log(`[UTC] Checking scheduled requests at: ${now}`)
     const { data: requests, error } = await supabase
       .from('approval_requests')
       .select('*')
       .eq('status', 'scheduled')
-      .lte('scheduled_send_at', now)
+      .lte('scheduled_send_at', now) // Compares UTC timestamps
       .order('scheduled_send_at', { ascending: true })
 
     if (error) {
@@ -64,10 +67,11 @@ serve(async (req) => {
 
         if (dailyCount >= 5) {
           // User has reached daily limit - auto-reschedule
+          // get_next_available_day returns DATE in UTC
           const { data: nextDate, error: nextDateError } = await supabase
             .rpc('get_next_available_day', { 
               user_uuid: request.user_id,
-              start_date: new Date().toISOString().split('T')[0]
+              start_date: new Date().toISOString().split('T')[0] // UTC date YYYY-MM-DD
             })
           
           if (nextDateError) {
@@ -77,21 +81,21 @@ serve(async (req) => {
           }
 
           if (nextDate) {
-            // Parse original scheduled time to keep same time of day
-            const originalScheduled = new Date(request.scheduled_send_at)
-            const newScheduled = new Date(nextDate)
-            newScheduled.setHours(
+            // Parse original scheduled time (UTC) to keep same time of day
+            const originalScheduled = new Date(request.scheduled_send_at) // UTC
+            const newScheduled = new Date(nextDate) // UTC date at midnight
+            newScheduled.setUTCHours( // Set UTC hours to preserve UTC time
               originalScheduled.getUTCHours(),
               originalScheduled.getUTCMinutes(),
               originalScheduled.getUTCSeconds()
             )
 
-            // Update the scheduled time
+            // Update the scheduled time (stored as UTC in database)
             const { error: updateError } = await supabase
               .from('approval_requests')
               .update({
-                scheduled_send_at: newScheduled.toISOString(),
-                updated_at: new Date().toISOString(),
+                scheduled_send_at: newScheduled.toISOString(), // UTC ISO string
+                updated_at: new Date().toISOString(), // UTC
               })
               .eq('id', request.id)
 
@@ -102,7 +106,7 @@ serve(async (req) => {
             }
 
             rescheduleCount++
-            console.log(`Rescheduled request ${request.id} to ${newScheduled.toISOString()}`)
+            console.log(`[UTC] Rescheduled request ${request.id} to ${newScheduled.toISOString()}`)
             
             // Note: Email notification for reschedule will be sent by backend
           }
@@ -127,7 +131,7 @@ serve(async (req) => {
 
         if (response.ok) {
           sentCount++
-          console.log(`Sent request ${request.id}`)
+          console.log(`[UTC] Sent request ${request.id}`)
         } else {
           const errorText = await response.text()
           console.error(`Failed to send request ${request.id}:`, errorText)
