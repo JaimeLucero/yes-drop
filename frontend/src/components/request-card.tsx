@@ -1,7 +1,7 @@
 'use client'
 
 import { format } from 'date-fns'
-import { Clock, CheckCircle2, XCircle, Edit, Trash2, Calendar, Send } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, Edit, Trash2, Calendar, Send, Paperclip, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -114,7 +114,7 @@ export function RequestCard({ request, onEdit, onDelete, onSchedule, onSendNow }
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-accent hover:text-accent/80 font-semibold break-all hover:underline"
                 >
-                  📎 View file
+                  <Paperclip className="h-4 w-4" /> View file
                 </a>
               </div>
             )}
@@ -157,11 +157,26 @@ export function RequestCard({ request, onEdit, onDelete, onSchedule, onSendNow }
           
           {!isModifiable && (
             <div className="mt-4 pt-4 border-t border-border/50">
-              <p className="text-sm text-muted-foreground">
-                {request.status === 'pending' && '📬 Sent - Awaiting approval'}
-                {request.status === 'approved' && '✅ Approved'}
-                {request.status === 'rejected' && '❌ Rejected'}
-              </p>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {request.status === 'pending' && (
+                  <>
+                    <Mail className="h-4 w-4" />
+                    <span>Sent - Awaiting approval</span>
+                  </>
+                )}
+                {request.status === 'approved' && (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>Approved</span>
+                  </>
+                )}
+                {request.status === 'rejected' && (
+                  <>
+                    <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <span>Rejected</span>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
