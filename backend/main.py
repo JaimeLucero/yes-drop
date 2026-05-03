@@ -5,12 +5,14 @@ Routes only - all business logic is in services.
 
 import logging
 import httpx
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Header, Depends, Query, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 from core.config import settings
 from auth.user import get_current_user
@@ -44,7 +46,7 @@ app.add_middleware(
 
 
 # Background scheduler for checking scheduled requests
-async def check_and_send_scheduled():
+def check_and_send_scheduled():
     """Check for scheduled requests and call Edge Function only if there are any"""
     try:
         # Check if there are any scheduled requests due
@@ -57,40 +59,57 @@ async def check_and_send_scheduled():
         logger.info(f"Found {len(scheduled_requests)} scheduled request(s) to send. Triggering Edge Function...")
 
         # Only call Edge Function if there are requests to send
-        if settings.CRON_SECRET:
-            supabase_url = settings.SUPABASE_URL
-            async with httpx.AsyncClient() as client:
-                try:
-                    response = await client.post(
-                        f"{supabase_url}/functions/v1/send-scheduled-requests",
-                        headers={"Authorization": f"Bearer {settings.CRON_SECRET}"},
-                        timeout=30.0
-                    )
-                    if response.status_code == 200:
-                        logger.info(f"Edge Function executed successfully: {response.json()}")
-                    else:
-                        logger.error(f"Edge Function returned status {response.status_code}: {response.text}")
-                except Exception as e:
-                    logger.error(f"Error calling Edge Function: {e}")
+        if settings.CRON_SECRET and settings.SUPABASE_URL:
+            try:
+                response = httpx.post(
+                    f"{settings.SUPABASE_URL}/functions/v1/send-scheduled-requests",
+                    headers={"Authorization": f"Bearer {settings.CRON_SECRET}"},
+                    timeout=30.0
+                )
+                if response.status_code == 200:
+                    logger.info(f"Edge Function executed successfully: {response.json()}")
+                else:
+                    logger.error(f"Edge Function returned status {response.status_code}: {response.text}")
+            except Exception as e:
+                logger.error(f"Error calling Edge Function: {e}")
         else:
-            logger.warning("CRON_SECRET not configured, cannot trigger Edge Function")
+            logger.warning("CRON_SECRET or SUPABASE_URL not configured, cannot trigger Edge Function")
     except Exception as e:
         logger.error(f"Error in scheduled request check: {e}", exc_info=True)
 
 
+scheduler = None
+
 def start_scheduler():
     """Start background scheduler"""
-    scheduler = BackgroundScheduler()
-    # Run every 5 minutes
-    scheduler.add_job(check_and_send_scheduled, 'interval', minutes=5, id='check_scheduled_requests')
-    scheduler.start()
-    logger.info("Scheduled request checker started (runs every 5 minutes)")
+    global scheduler
+    try:
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(check_and_send_scheduled, 'interval', minutes=5, id='check_scheduled_requests')
+        scheduler.start()
+        logger.info("✓ Scheduled request checker started (runs every 5 minutes)")
+    except Exception as e:
+        logger.error(f"Failed to start scheduler: {e}", exc_info=True)
 
 
 @app.on_event("startup")
-async def startup_event():
+def startup_event():
     """Start background tasks on app startup"""
+    logger.info("Starting application...")
     start_scheduler()
+    logger.info("✓ Application startup complete")
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    """Shutdown background tasks"""
+    global scheduler
+    if scheduler:
+        try:
+            scheduler.shutdown()
+            logger.info("✓ Scheduler shutdown complete")
+        except Exception as e:
+            logger.error(f"Error during scheduler shutdown: {e}")
 
 
 @app.post("/api/requests", response_model=ApprovalRequestResponse)
