@@ -15,6 +15,9 @@ class Settings:
 
     SUPABASE_JWKS_URL: str | None = os.getenv("SUPABASE_JWKS_URL")
     SUPABASE_AUDIENCE: str | None = os.getenv("SUPABASE_AUDIENCE")
+    SUPABASE_URL: str | None = os.getenv("SUPABASE_URL")
+    SUPABASE_SERVICE_ROLE_KEY: str | None = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    DATABASE_URL: str | None = os.getenv("DATABASE_URL")
 
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
