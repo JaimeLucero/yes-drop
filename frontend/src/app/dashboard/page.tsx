@@ -30,6 +30,7 @@ export default function DashboardPage() {
     mutationFn: deleteRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
+      queryClient.invalidateQueries({ queryKey: ['daily-limit'] })
       toast.success('Draft deleted successfully')
     },
     onError: (error) => {
@@ -54,6 +55,8 @@ export default function DashboardPage() {
       scheduleRequest(id, datetime),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
+      setScheduleModalOpen(false)
+      setSelectedRequest(null)
       toast.success('Request scheduled successfully')
     },
     onError: (error) => {
@@ -110,8 +113,6 @@ export default function DashboardPage() {
         id: selectedRequest.id,
         datetime,
       })
-      setScheduleModalOpen(false)
-      setSelectedRequest(null)
     }
   }
 
