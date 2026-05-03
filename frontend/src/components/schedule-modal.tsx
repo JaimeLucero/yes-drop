@@ -41,7 +41,7 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
   const handleSchedule = () => {
     if (!date || isTimeInPast) return
 
-    // Create local datetime, then convert to UTC for API
+    // Create local datetime - Date constructor automatically handles timezone
     const localDate = new Date(
       date.getFullYear(),
       date.getMonth(),
@@ -50,9 +50,8 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
       time.minutes
     )
 
-    // Convert local time to UTC ISO string
-    const utcDate = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000))
-    onSchedule(utcDate.toISOString())
+    // toISOString() correctly converts the local time to UTC
+    onSchedule(localDate.toISOString())
     onOpenChange(false)
   }
 
