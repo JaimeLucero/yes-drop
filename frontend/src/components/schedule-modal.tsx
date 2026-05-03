@@ -27,18 +27,29 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
   )
   const [time, setTime] = useState({ hours: 9, minutes: 0 })
 
+  // Get current UTC time to prevent scheduling in the past
+  const now = new Date()
+  const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const currentUTCHours = now.getUTCHours()
+  const currentUTCMinutes = now.getUTCMinutes()
+
+  // Check if selected time is in the past
+  const isTimeInPast = date &&
+    date.getTime() === todayUTC.getTime() &&
+    (time.hours < currentUTCHours || (time.hours === currentUTCHours && time.minutes <= currentUTCMinutes))
+
   const handleSchedule = () => {
-    if (!date) return
-    
+    if (!date || isTimeInPast) return
+
     // Create UTC datetime
     const scheduledDate = new Date(Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
       time.hours,
       time.minutes
     ))
-    
+
     onSchedule(scheduledDate.toISOString())
     onOpenChange(false)
   }
@@ -67,14 +78,20 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
             <div className="flex gap-2">
               <select
                 value={time.hours}
-                onChange={(e) => setTime({ ...time, hours: parseInt(e.target.value) })}
+                onChange={(e) => {
+                  const hours = parseInt(e.target.value)
+                  setTime({ ...time, hours })
+                }}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                {Array.from({ length: 24 }, (_, i) => (
-                  <option key={i} value={i}>
-                    {i.toString().padStart(2, '0')}
-                  </option>
-                ))}
+                {Array.from({ length: 24 }, (_, i) => {
+                  const isDisabled = date && date.getTime() === todayUTC.getTime() && i <= currentUTCHours
+                  return (
+                    <option key={i} value={i} disabled={isDisabled}>
+                      {i.toString().padStart(2, '0')}
+                    </option>
+                  )
+                })}
               </select>
               <span className="flex items-center text-2xl">:</span>
               <select
@@ -82,18 +99,30 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
                 onChange={(e) => setTime({ ...time, minutes: parseInt(e.target.value) })}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                {[0, 15, 30, 45].map((m) => (
-                  <option key={m} value={m}>
-                    {m.toString().padStart(2, '0')}
-                  </option>
-                ))}
+                {[0, 15, 30, 45].map((m) => {
+                  const isDisabled = date &&
+                    date.getTime() === todayUTC.getTime() &&
+                    time.hours === currentUTCHours &&
+                    m <= currentUTCMinutes
+                  return (
+                    <option key={m} value={m} disabled={isDisabled}>
+                      {m.toString().padStart(2, '0')}
+                    </option>
+                  )
+                })}
               </select>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <div className="space-y-2 text-xs">
+              <p className="text-muted-foreground">
+                Current UTC time: {currentUTCHours.toString().padStart(2, '0')}:{currentUTCMinutes.toString().padStart(2, '0')}
+              </p>
               {date && (
-                <>Selected: {format(date, 'EEEE, MMMM d, yyyy')} at {time.hours.toString().padStart(2, '0')}:{time.minutes.toString().padStart(2, '0')} UTC</>
+                <p className={isTimeInPast ? 'text-red-500 font-medium' : 'text-muted-foreground'}>
+                  Selected: {format(date, 'EEEE, MMMM d, yyyy')} at {time.hours.toString().padStart(2, '0')}:{time.minutes.toString().padStart(2, '0')} UTC
+                  {isTimeInPast && ' (⚠️ in the past)'}
+                </p>
               )}
-            </p>
+            </div>
           </div>
         </div>
         
@@ -101,8 +130,8 @@ export function ScheduleModal({ open, onOpenChange, onSchedule, initialDate }: S
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSchedule} disabled={!date}>
-            Schedule
+          <Button onClick={handleSchedule} disabled={!date || isTimeInPast}>
+            {isTimeInPast ? 'Select future time' : 'Schedule'}
           </Button>
         </DialogFooter>
       </DialogContent>
