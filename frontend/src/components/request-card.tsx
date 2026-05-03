@@ -129,6 +129,15 @@ export function RequestCard({ request, onEdit, onDelete, onSchedule, onSendNow }
                 </p>
               </div>
             )}
+
+            {request.feedback && (
+              <div className="text-sm">
+                <p className="text-foreground/60 font-semibold uppercase text-xs tracking-wide mb-2">
+                  Feedback
+                </p>
+                <p className="text-foreground/80 line-clamp-3 italic leading-relaxed">"{request.feedback}"</p>
+              </div>
+            )}
           </div>
 
           <div className="pt-4 border-t border-border/50">

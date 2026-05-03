@@ -435,12 +435,16 @@ class ApprovalRequestService:
         new_status = "approved" if action == "approve" else "rejected"
         now = datetime.now(timezone.utc)
 
-        # Update status and feedback
-        update_data = {"status": new_status, "updated_at": now.isoformat()}
-        if feedback:
-            update_data["feedback"] = feedback
+        # Update status
+        repository.update(req["id"], {"status": new_status, "updated_at": now.isoformat()})
 
-        repository.update(req["id"], update_data)
+        # Store feedback if provided
+        if feedback:
+            repository.add_feedback(
+                request_id=req["id"],
+                approver_email=req["approver_email"],
+                feedback_text=feedback,
+            )
 
         # Send notification to requester using stored email
         requester_email = req.get("requester_email")

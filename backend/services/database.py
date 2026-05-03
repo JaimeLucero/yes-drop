@@ -19,6 +19,13 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
     """Convert database record to response schema"""
     from models.schemas import ApprovalRequestResponse
 
+    # Get latest feedback if request is approved or rejected
+    feedback = None
+    if record["status"] in ("approved", "rejected"):
+        feedback_records = repository.get_feedback(record["id"])
+        if feedback_records:
+            feedback = feedback_records[0].get("feedback_text")
+
     return ApprovalRequestResponse(
         id=record["id"],
         user_id=record["user_id"],
@@ -27,6 +34,7 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         title=record.get("title"),
         message=record.get("message"),
         file_url=record.get("file_url"),
+        feedback=feedback,
         token=record["token"],
         status=record["status"],
         scheduled_send_at=record.get("scheduled_send_at"),
@@ -133,6 +141,30 @@ class ApprovalRequestRepository:
         except Exception as e:
             logger.error(f"Error getting next available day: {e}")
             return None
+
+    @staticmethod
+    def add_feedback(request_id: str, approver_email: str, feedback_text: str) -> dict | None:
+        """Add feedback to a request"""
+        try:
+            result = supabase.table("request_feedback").insert({
+                "request_id": request_id,
+                "approver_email": approver_email,
+                "feedback_text": feedback_text,
+            }).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Error adding feedback: {e}")
+            return None
+
+    @staticmethod
+    def get_feedback(request_id: str) -> list[dict]:
+        """Get all feedback for a request"""
+        try:
+            result = supabase.table("request_feedback").select("*").eq("request_id", request_id).order("created_at", desc=True).execute()
+            return result.data or []
+        except Exception as e:
+            logger.error(f"Error getting feedback: {e}")
+            return []
 
 
 # Singleton instance
