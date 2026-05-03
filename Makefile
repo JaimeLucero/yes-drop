@@ -57,7 +57,10 @@ run-backend:
 		echo "Creating virtual environment..."; \
 		cd backend && python3 -m venv venv; \
 	fi
-	. backend/venv/bin/activate && pip install -r backend/requirements.txt
+	@if [ ! -f "backend/venv/bin/activate" ]; then \
+		echo "Installing dependencies..."; \
+		cd backend && venv/bin/pip install -r requirements.txt; \
+	fi
 	. backend/venv/bin/activate && cd backend && uvicorn main:app --reload --port 8000
 
 # Dev (runs both in background)

@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YesDrop
 
-## Getting Started
+Approval request management system with email notifications.
 
-First, run the development server:
+## Architecture
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Frontend**: Next.js + TanStack Query + shadcn/ui (Vercel)
+- **Backend**: FastAPI + Brevo SDK (Render)
+
+## Project Structure
+
+```
+yes-drop/
+├── frontend/          # Next.js application
+│   ├── src/
+│   │   ├── app/      # Pages
+│   │   ├── components/
+│   │   └── lib/      # Utilities, API client
+│   └── package.json
+├── backend/          # FastAPI application
+│   ├── main.py       # App entry, routes
+│   ├── auth/         # Authentication (JWT validation)
+│   ├── services/     # Business logic (email service)
+│   ├── models/       # Pydantic schemas
+│   ├── core/         # Configuration
+│   └── requirements.txt
+└── Makefile
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Quick Start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Prerequisites
+- Node.js 18+
+- Python 3.12+
+- Supabase project (for auth)
+- Brevo account (for emails)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Frontend Setup
 
-## Learn More
+```bash
+cd frontend
+npm install
+cp .env.local.example .env.local  # Update with your Supabase credentials
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 2. Backend Setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env  # Update with your Brevo API key
+uvicorn main:app --reload --port 8000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Using Make
 
-## Deploy on Vercel
+```bash
+make setup        # Full project setup
+make install      # Install all dependencies
+make run          # Run both frontend and backend
+make run-frontend # Run frontend only
+make run-backend  # Run backend only
+make lint         # Run linter
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Environment Variables
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Frontend (.env.local)
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+```
+
+### Backend (.env)
+```
+BREVO_API_KEY=your-brevo-api-key
+BREVO_SENDER_EMAIL=optional-custom-sender
+BREVO_SENDER_NAME=YesDrop
+
+SUPABASE_JWKS_URL=https://your-project.supabase.co/auth/v1/jwks
+SUPABASE_AUDIENCE=https://your-project.supabase.co
+
+FRONTEND_URL=http://localhost:3000
+CRON_SECRET=your-secret
+```
+
+## API Endpoints
+
+- `POST /api/requests` - Create approval request
+- `GET /api/requests` - List user's requests
+- `GET /action` - Handle approve/reject (public)
+- `POST /api/cron/reminders` - Send reminders (cron)
+- `GET /health` - Health check
+
+## Email Configuration
+
+By default, uses Brevo's shared sender domain. For production:
+
+1. Authenticate your domain in Brevo dashboard
+2. Set `BREVO_SENDER_EMAIL` in `.env`
+3. Emails will send from your domain with reply-to set to requester
