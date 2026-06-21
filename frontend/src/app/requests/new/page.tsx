@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createRequest, uploadFile, createDraft, scheduleRequest } from '@/lib/api'
+import { createRequest, uploadFile, createDraft, scheduleRequest, type Reminder } from '@/lib/api'
 import { Upload, AlertCircle, File, CheckCircle, Calendar, Clock, X } from 'lucide-react'
 import { ScheduleModal } from '@/components/schedule-modal'
 import { DateTimePickerModal } from '@/components/date-time-picker-modal'
@@ -26,35 +26,31 @@ export default function NewRequestPage() {
   const [scheduledTime, setScheduledTime] = useState('')
   const [deadlineDateTime, setDeadlineDateTime] = useState<string>('')
   const [followUpEnabled, setFollowUpEnabled] = useState(true)
-  const [followUpConfig, setFollowUpConfig] = useState<{ beforeDeadline?: string; afterSending?: string }>({})
+  const [reminders, setReminders] = useState<Reminder[]>([])
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [deadlineModalOpen, setDeadlineModalOpen] = useState(false)
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false)
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
-      const followUpStrategy = followUpEnabled && (followUpConfig.beforeDeadline || followUpConfig.afterSending) ? {
-        enabled: true,
-        days_before_deadline: followUpConfig.beforeDeadline ? calculateDaysUntil(followUpConfig.beforeDeadline) : undefined,
-        days_after_sending: followUpConfig.afterSending ? calculateDaysUntil(followUpConfig.afterSending) : undefined,
-      } : { enabled: false }
-
+      // Reminders carry absolute times (no day rounding); empty when disabled.
+      const activeReminders = followUpEnabled ? reminders : []
       const deadlineDays = deadlineDateTime ? calculateDaysUntil(deadlineDateTime) : 3
 
       if (action === 'draft') {
         return createDraft(data)
       } else if (action === 'schedule') {
-        return createRequest({ 
-          ...data, 
+        return createRequest({
+          ...data,
           scheduled_send_at: scheduledTime,
           deadline_days: deadlineDays,
-          follow_up_strategy: followUpStrategy,
+          reminders: activeReminders,
         })
       } else {
-        return createRequest({ 
-          ...data, 
+        return createRequest({
+          ...data,
           deadline_days: deadlineDays,
-          follow_up_strategy: followUpStrategy,
+          reminders: activeReminders,
         })
       }
     },
@@ -408,9 +404,9 @@ export default function NewRequestPage() {
                         className="w-full flex items-center gap-2 px-4 py-3 bg-background border-2 border-border rounded-xl text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
                       >
                         <Clock className="h-5 w-5 text-foreground/60" />
-                        <span className={followUpConfig.beforeDeadline || followUpConfig.afterSending ? 'text-foreground font-medium' : 'text-foreground/40'}>
-                          {followUpConfig.beforeDeadline || followUpConfig.afterSending
-                            ? `${followUpConfig.beforeDeadline ? 'Reminder before deadline' : ''}${followUpConfig.beforeDeadline && followUpConfig.afterSending ? ' • ' : ''}${followUpConfig.afterSending ? 'Follow-up after sending' : ''}`
+                        <span className={reminders.length ? 'text-foreground font-medium' : 'text-foreground/40'}>
+                          {reminders.length
+                            ? `${reminders.length} reminder${reminders.length > 1 ? 's' : ''} configured`
                             : 'Configure reminder times'}
                         </span>
                       </button>
@@ -490,8 +486,8 @@ export default function NewRequestPage() {
         <FollowUpModal
           open={followUpModalOpen}
           onOpenChange={setFollowUpModalOpen}
-          onSave={setFollowUpConfig}
-          initialConfig={followUpConfig}
+          onSave={setReminders}
+          initialReminders={reminders}
           deadlineDateTime={deadlineDateTime}
         />
       </main>

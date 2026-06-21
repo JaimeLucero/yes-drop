@@ -4,11 +4,19 @@ from typing import Optional
 
 
 class FollowUpStrategy(BaseModel):
-    """Flexible follow-up strategy configuration"""
+    """Flexible follow-up strategy configuration (legacy, kept for compat)"""
 
     enabled: bool = True
     days_before_deadline: Optional[int] = None
     days_after_sending: Optional[int] = None
+
+
+class ReminderInput(BaseModel):
+    """A single reminder at an absolute UTC time."""
+
+    kind: str  # 'before_deadline' | 'after_sending' | 'absolute'
+    send_at: str  # absolute UTC ISO timestamp
+    custom_message: str | None = None
 
 
 class ApprovalRequestCreate(BaseModel):
@@ -22,6 +30,7 @@ class ApprovalRequestCreate(BaseModel):
     notify_requester: bool = True
     deadline_days: int = 3
     follow_up_strategy: FollowUpStrategy | None = None
+    reminders: list[ReminderInput] | None = None
 
 
 class ApprovalRequestDraft(BaseModel):
@@ -52,6 +61,7 @@ class ScheduleRequest(BaseModel):
     scheduled_send_at: str
     deadline_days: int | None = None
     follow_up_strategy: FollowUpStrategy | None = None
+    reminders: list[ReminderInput] | None = None
 
 
 class ApprovalRequestResponse(BaseModel):

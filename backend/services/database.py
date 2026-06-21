@@ -311,6 +311,106 @@ class ApprovalRequestRepository:
             logger.error(f"Error getting requests due for after-sending follow-up: {e}")
             return []
 
+    @staticmethod
+    def get_public_stats() -> dict:
+        """Global aggregate stats for the public landing page."""
+        try:
+            result = supabase.rpc("get_public_stats").execute()
+            return result.data or {}
+        except Exception as e:
+            logger.error(f"Error getting public stats: {e}")
+            return {}
+
+    @staticmethod
+    def get_user_stats(user_id: str) -> dict:
+        """Per-user aggregate stats for the dashboard analytics band."""
+        try:
+            result = supabase.rpc(
+                "get_user_stats", {"user_uuid": user_id}
+            ).execute()
+            return result.data or {}
+        except Exception as e:
+            logger.error(f"Error getting user stats: {e}")
+            return {}
+
+    # ---- Reminders (follow-up automation) ----
+
+    @staticmethod
+    def create_reminders(request_id: str, reminders: list[dict]) -> None:
+        """Insert reminder rows for a request."""
+        if not reminders:
+            return
+        rows = [
+            {
+                "request_id": request_id,
+                "kind": r["kind"],
+                "send_at": r["send_at"],
+                "custom_message": r.get("custom_message"),
+            }
+            for r in reminders
+        ]
+        try:
+            supabase.table("request_reminders").insert(rows).execute()
+        except Exception as e:
+            logger.error(f"Error creating reminders: {e}")
+
+    @staticmethod
+    def cancel_pending_reminders(request_id: str) -> None:
+        """Cancel all pending reminders for a request (used on reschedule)."""
+        try:
+            (
+                supabase.table("request_reminders")
+                .update({"status": "cancelled"})
+                .eq("request_id", request_id)
+                .eq("status", "pending")
+                .execute()
+            )
+        except Exception as e:
+            logger.error(f"Error cancelling reminders: {e}")
+
+    @staticmethod
+    def get_due_reminders() -> list[dict]:
+        """Pending reminders that are due and whose parent is still pending."""
+        try:
+            result = supabase.rpc("get_due_reminders").execute()
+            return result.data or []
+        except Exception as e:
+            logger.error(f"Error getting due reminders: {e}")
+            return []
+
+    @staticmethod
+    def get_reminder(reminder_id: str) -> dict | None:
+        """Get a single reminder row by id."""
+        try:
+            result = (
+                supabase.table("request_reminders")
+                .select("*")
+                .eq("id", reminder_id)
+                .execute()
+            )
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Error getting reminder: {e}")
+            return None
+
+    @staticmethod
+    def mark_reminder_sent(reminder_id: str) -> None:
+        """Flip a reminder to 'sent' so it never re-fires (dedup)."""
+        try:
+            (
+                supabase.table("request_reminders")
+                .update(
+                    {
+                        "status": "sent",
+                        "sent_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+                .eq("id", reminder_id)
+                .execute()
+            )
+        except Exception as e:
+            logger.error(f"Error marking reminder sent: {e}")
+
 
 # Singleton instance
 repository = ApprovalRequestRepository()

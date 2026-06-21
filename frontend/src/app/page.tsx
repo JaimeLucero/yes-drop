@@ -4,13 +4,17 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/supabase'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle, Zap, Shield, BarChart3, Mail, Upload } from 'lucide-react'
+import { ArrowRight, CheckCircle, Zap, Shield, BarChart3, Mail, Upload, Play } from 'lucide-react'
 import { Footer } from '@/components/footer'
+import { StatStrip } from '@/components/landing/stat-strip'
+import { StatsSection } from '@/components/landing/stats-section'
+import { DemoWalkthroughModal } from '@/components/demo-walkthrough-modal'
 
 export default function LandingPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [demoOpen, setDemoOpen] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -78,9 +82,18 @@ export default function LandingPage() {
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </Link>
-                <button className="px-8 py-3.5 bg-secondary text-secondary-foreground font-semibold rounded-xl border border-border hover:bg-secondary/80 transition-colors w-full sm:w-auto">
+                <button
+                  onClick={() => setDemoOpen(true)}
+                  className="group px-8 py-3.5 bg-secondary text-secondary-foreground font-semibold rounded-xl border border-border hover:bg-secondary/80 transition-colors w-full sm:w-auto flex items-center gap-2 justify-center"
+                >
+                  <Play className="h-4 w-4 fill-current" />
                   Watch Demo
                 </button>
+              </div>
+
+              {/* Live, data-driven stat strip (real numbers above threshold, illustrative below) */}
+              <div className="pt-4 border-t border-border w-full flex justify-center lg:justify-start">
+                <StatStrip />
               </div>
 
             </div>
@@ -172,6 +185,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Data-driven stats section */}
+      <StatsSection />
+
       {/* CTA Section */}
       <section className="py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 pointer-events-none"></div>
@@ -192,6 +208,8 @@ export default function LandingPage() {
       </section>
 
       <Footer />
+
+      <DemoWalkthroughModal open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   )
 }

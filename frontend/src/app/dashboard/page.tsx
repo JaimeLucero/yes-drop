@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchRequests, deleteRequest, sendRequestNow, scheduleRequest, updateRequest, type ApprovalRequest } from '@/lib/api'
+import { fetchRequests, deleteRequest, sendRequestNow, scheduleRequest, updateRequest, type ApprovalRequest, type Reminder } from '@/lib/api'
 import { DailyLimitIndicator } from '@/components/daily-limit-indicator'
+import { AnalyticsBand } from '@/components/dashboard/analytics-band'
 import { RequestFilters, type RequestStatusFilter } from '@/components/request-filters'
 import { RequestCard } from '@/components/request-card'
 import { RescheduleModal } from '@/components/reschedule-modal'
@@ -51,13 +52,13 @@ export default function DashboardPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: ({ id, datetime, deadlineDays, followUpStrategy }: { 
-      id: string; 
+    mutationFn: ({ id, datetime, deadlineDays, reminders }: {
+      id: string;
       datetime: string;
       deadlineDays?: number;
-      followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number };
+      reminders?: Reminder[];
     }) =>
-      scheduleRequest(id, datetime, followUpStrategy, deadlineDays),
+      scheduleRequest(id, datetime, reminders, deadlineDays),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
       setScheduleModalOpen(false)
@@ -112,13 +113,13 @@ export default function DashboardPage() {
     setScheduleModalOpen(true)
   }
 
-  const handleScheduleSubmit = (datetime: string, deadlineDays?: number, followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number }) => {
+  const handleScheduleSubmit = (datetime: string, deadlineDays?: number, reminders?: Reminder[]) => {
     if (selectedRequest) {
       scheduleMutation.mutate({
         id: selectedRequest.id,
         datetime,
         deadlineDays,
-        followUpStrategy,
+        reminders,
       })
     }
   }
@@ -131,7 +132,10 @@ export default function DashboardPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-heading font-semibold text-foreground">Dashboard</h1>
+          <div>
+            <h1 className="text-2xl font-heading font-semibold text-foreground">Dashboard</h1>
+            <p className="text-sm text-foreground/55 mt-1">Track every approval request at a glance</p>
+          </div>
           <Link href="/requests/new">
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -139,6 +143,9 @@ export default function DashboardPage() {
             </Button>
           </Link>
         </div>
+
+        {/* Analytics overview */}
+        <AnalyticsBand />
 
         {/* Status Filters */}
         <RequestFilters onFilterChange={setStatusFilter} />
@@ -209,7 +216,7 @@ export default function DashboardPage() {
         onReschedule={handleScheduleSubmit}
         initialDate={selectedRequest?.scheduled_send_at || undefined}
         initialDeadline={selectedRequest?.deadline || undefined}
-        initialFollowUp={selectedRequest?.follow_up_strategy || null}
+        initialReminders={null}
       />
 
       {/* Edit Modal */}

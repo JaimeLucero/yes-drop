@@ -6,17 +6,17 @@ Routes only - all business logic is in services.
 import logging
 import httpx
 import asyncio
+import time
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Header, Depends, Query, Request
+from fastapi import FastAPI, Header, Depends, Query, Request, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 
 from core.config import settings
 from auth.user import get_current_user
 from services.requests import service
+from services.email import email_service
 from services.database import repository
 from models.schemas import (
     ApprovalRequestCreate,
@@ -41,102 +41,9 @@ app.add_middleware(
 )
 
 
-# Background scheduler for checking scheduled requests
-def check_and_send_scheduled():
-    """Check for scheduled requests and call Edge Function only if there are any"""
-    try:
-        # Check if there are any scheduled requests due
-        scheduled_requests = repository.get_scheduled_due()
-
-        if not scheduled_requests:
-            logger.debug("No scheduled requests due at this time")
-            return
-
-        logger.info(
-            f"Found {len(scheduled_requests)} scheduled request(s) to send. Triggering Edge Function..."
-        )
-
-        # Only call Edge Function if there are requests to send
-        if settings.CRON_SECRET and settings.SUPABASE_URL:
-            try:
-                response = httpx.post(
-                    f"{settings.SUPABASE_URL}/functions/v1/send-scheduled-requests",
-                    headers={"Authorization": f"Bearer {settings.CRON_SECRET}"},
-                    timeout=30.0,
-                )
-                if response.status_code == 200:
-                    logger.info(
-                        f"Edge Function executed successfully: {response.json()}"
-                    )
-                else:
-                    logger.error(
-                        f"Edge Function returned status {response.status_code}: {response.text}"
-                    )
-            except Exception as e:
-                logger.error(f"Error calling Edge Function: {e}")
-        else:
-            logger.warning(
-                "CRON_SECRET or SUPABASE_URL not configured, cannot trigger Edge Function"
-            )
-    except Exception as e:
-        logger.error(f"Error in scheduled request check: {e}", exc_info=True)
-
-
-def check_deadlines_and_followups():
-    """Check deadlines and send follow-ups"""
-    try:
-        logger.info("Running deadline and follow-up check...")
-        asyncio.run(service.check_deadlines_and_send_followups())
-        logger.info("Deadline and follow-up check complete")
-    except Exception as e:
-        logger.error(f"Error in deadline check: {e}", exc_info=True)
-
-
-scheduler = None
-
-
-def start_scheduler():
-    """Start background scheduler"""
-    global scheduler
-    try:
-        scheduler = BackgroundScheduler()
-        scheduler.add_job(
-            check_and_send_scheduled,
-            "interval",
-            minutes=5,
-            id="check_scheduled_requests",
-        )
-        scheduler.add_job(
-            check_deadlines_and_followups,
-            "interval",
-            hours=1,
-            id="check_deadlines_followups",
-        )
-        scheduler.start()
-        logger.info("✓ Scheduled request checker started (runs every 5 minutes)")
-        logger.info("✓ Deadline and follow-up checker started (runs every hour)")
-    except Exception as e:
-        logger.error(f"Failed to start scheduler: {e}", exc_info=True)
-
-
-@app.on_event("startup")
-def startup_event():
-    """Start background tasks on app startup"""
-    logger.info("Starting application...")
-    start_scheduler()
-    logger.info("✓ Application startup complete")
-
-
-@app.on_event("shutdown")
-def shutdown_event():
-    """Shutdown background tasks"""
-    global scheduler
-    if scheduler:
-        try:
-            scheduler.shutdown()
-            logger.info("✓ Scheduler shutdown complete")
-        except Exception as e:
-            logger.error(f"Error during scheduler shutdown: {e}")
+# Scheduling is driven entirely by Supabase cron edge functions
+# (send-scheduled-requests + check-deadlines-followups, every 5 min UTC). The
+# in-process APScheduler was removed to avoid a second, racing scheduler.
 
 
 @app.post("/api/requests", response_model=ApprovalRequestResponse)
@@ -219,6 +126,30 @@ async def get_daily_limit(
 ):
     """Get current daily usage and reset time"""
     return service.get_daily_limit(user_id)
+
+
+# Short-lived in-process cache for the public stats endpoint so landing-page
+# traffic does not hit Postgres on every request.
+_PUBLIC_STATS_TTL = 300  # seconds
+_public_stats_cache: dict = {"data": None, "at": 0.0}
+
+
+@app.get("/api/stats")
+async def public_stats():
+    """Public global stats for the landing page (cached ~5 min)."""
+    now = time.monotonic()
+    if _public_stats_cache["data"] is None or (
+        now - _public_stats_cache["at"] > _PUBLIC_STATS_TTL
+    ):
+        _public_stats_cache["data"] = repository.get_public_stats()
+        _public_stats_cache["at"] = now
+    return _public_stats_cache["data"]
+
+
+@app.get("/api/stats/me")
+async def my_stats(user_id: str = Depends(get_current_user)):
+    """Per-user stats for the authenticated dashboard analytics band."""
+    return repository.get_user_stats(user_id)
 
 
 @app.get("/action")
@@ -309,28 +240,5 @@ async def send_followup(
     data: dict,
     authorization: str | None = Header(None),
 ):
-    """Internal endpoint to send follow-up emails"""
-    expected = f"Bearer {settings.CRON_SECRET or ''}"
-    if authorization != expected:
-        raise HTTPException(401, "Unauthorized")
-
-    request_id = data.get("request_id")
-    followup_type = data.get("followup_type")
-
-    req = repository.get_by_id(request_id)
-    if not req:
-        raise HTTPException(404, "Request not found")
-
-    try:
-        # Send follow-up email
-        await send_approval_email(req, is_followup=True, followup_type=followup_type)
-
-        # Record the follow-up event
-        event_type = f"followup_{followup_type}"
-        repository.add_email_event(request_id, event_type)
-
-        logger.info(f"Sent {followup_type} follow-up for request {request_id}")
-        return {"success": True}
-    except Exception as e:
-        logger.error(f"Failed to send follow-up: {e}")
-        raise HTTPException(500, str(e))
+    """Internal endpoint: send a single due reminder by id (Edge Function calls per reminder)."""
+    return await service.send_reminder(data.get("reminder_id"), authorization)

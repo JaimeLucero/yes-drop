@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Clock, Plus, Check, Trash2 } from 'lucide-react'
+import { Clock, Plus, Check, Trash2, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,138 +12,121 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { DateTimePickerModal } from './date-time-picker-modal'
-
-interface FollowUpConfig {
-  beforeDeadline?: string
-  afterSending?: string
-}
+import type { Reminder } from '@/lib/api'
 
 interface FollowUpModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (config: FollowUpConfig) => void
-  initialConfig?: FollowUpConfig
+  onSave: (reminders: Reminder[]) => void
+  initialReminders?: Reminder[]
   deadlineDateTime?: string
 }
 
-export function FollowUpModal({ open, onOpenChange, onSave, initialConfig, deadlineDateTime }: FollowUpModalProps) {
-  const [config, setConfig] = useState<FollowUpConfig>(initialConfig || {})
-  const [addingType, setAddingType] = useState<'before' | 'after' | null>(null)
-  const [pickerOpen, setPickerOpen] = useState(false)
+export function FollowUpModal({
+  open,
+  onOpenChange,
+  onSave,
+  initialReminders,
+  deadlineDateTime,
+}: FollowUpModalProps) {
+  const [reminders, setReminders] = useState<Reminder[]>(initialReminders || [])
+  const [pickerIndex, setPickerIndex] = useState<number | null>(null)
 
-  const handleAdd = (type: 'before' | 'after') => {
-    setAddingType(type)
-    setPickerOpen(true)
+  const addReminder = (kind: Reminder['kind']) => {
+    setReminders((r) => [...r, { kind, send_at: '', custom_message: '' }])
   }
 
-  const handleDateTimeSelect = (datetime: string) => {
-    if (addingType === 'before') {
-      setConfig({ ...config, beforeDeadline: datetime })
-    } else if (addingType === 'after') {
-      setConfig({ ...config, afterSending: datetime })
-    }
-    setAddingType(null)
-    setPickerOpen(false)
+  const updateReminder = (i: number, patch: Partial<Reminder>) => {
+    setReminders((r) => r.map((rem, idx) => (idx === i ? { ...rem, ...patch } : rem)))
   }
 
-  const handleRemove = (type: 'before' | 'after') => {
-    if (type === 'before') {
-      setConfig({ ...config, beforeDeadline: undefined })
-    } else {
-      setConfig({ ...config, afterSending: undefined })
+  const removeReminder = (i: number) => {
+    setReminders((r) => r.filter((_, idx) => idx !== i))
+  }
+
+  const handlePicked = (datetime: string) => {
+    if (pickerIndex !== null) {
+      // Store as absolute UTC so the backend gets exact times (no day rounding).
+      updateReminder(pickerIndex, { send_at: new Date(datetime).toISOString() })
     }
+    setPickerIndex(null)
   }
 
   const handleSave = () => {
-    onSave(config)
+    // Drop incomplete rows (no time picked yet).
+    onSave(reminders.filter((r) => r.send_at))
     onOpenChange(false)
   }
+
+  const pickingKind = pickerIndex !== null ? reminders[pickerIndex]?.kind : undefined
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Configure Follow-up Reminders</DialogTitle>
+            <DialogTitle>Reminders</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Before Deadline */}
-            <div className="p-4 bg-secondary/50 rounded-xl border border-border">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-amber-600" />
-                  <span className="font-semibold text-foreground">Before Deadline</span>
-                </div>
-                {config.beforeDeadline ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemove('before')}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAdd('before')}
-                    className="h-8"
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Add
-                  </Button>
-                )}
-              </div>
-              {config.beforeDeadline && (
-                <p className="text-sm text-foreground/80 ml-7">
-                  {format(new Date(config.beforeDeadline), 'EEEE, MMMM d, yyyy p')}
-                </p>
-              )}
-              {!config.beforeDeadline && (
-                <p className="text-sm text-muted-foreground ml-7">
-                  Send a reminder before the deadline
-                </p>
-              )}
-            </div>
+          <div className="space-y-3 py-2 max-h-[55vh] overflow-y-auto">
+            {reminders.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No reminders yet. Add one or more below.
+              </p>
+            )}
 
-            {/* After Sending */}
-            <div className="p-4 bg-secondary/50 rounded-xl border border-border">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                  <span className="font-semibold text-foreground">After Sending</span>
-                </div>
-                {config.afterSending ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemove('after')}
-                    className="h-8 w-8 p-0"
-                  >
+            {reminders.map((rem, i) => (
+              <div key={i} className="p-4 bg-secondary/50 rounded-xl border border-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex rounded-lg border border-border overflow-hidden text-xs font-medium">
+                    <button
+                      type="button"
+                      onClick={() => updateReminder(i, { kind: 'before_deadline' })}
+                      className={`px-3 py-1.5 ${rem.kind === 'before_deadline' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground/70'}`}
+                    >
+                      Before deadline
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateReminder(i, { kind: 'after_sending' })}
+                      className={`px-3 py-1.5 ${rem.kind === 'after_sending' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground/70'}`}
+                    >
+                      After sending
+                    </button>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => removeReminder(i)} className="h-8 w-8 p-0">
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAdd('after')}
-                    className="h-8"
-                  >
-                    <Plus className="h-4 w-4 mr-1" /> Add
-                  </Button>
-                )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPickerIndex(i)}
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-background border border-border rounded-lg text-left hover:border-primary/50 transition-colors"
+                >
+                  <Calendar className="h-4 w-4 text-foreground/50" />
+                  <span className={rem.send_at ? 'text-foreground text-sm' : 'text-foreground/40 text-sm'}>
+                    {rem.send_at ? format(new Date(rem.send_at), 'EEEE, MMMM d, yyyy p') : 'Set reminder time'}
+                  </span>
+                </button>
+
+                <input
+                  type="text"
+                  value={rem.custom_message || ''}
+                  onChange={(e) => updateReminder(i, { custom_message: e.target.value })}
+                  placeholder="Optional custom message for this reminder"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary"
+                />
               </div>
-              {config.afterSending && (
-                <p className="text-sm text-foreground/80 ml-7">
-                  {format(new Date(config.afterSending), 'EEEE, MMMM d, yyyy p')}
-                </p>
-              )}
-              {!config.afterSending && (
-                <p className="text-sm text-muted-foreground ml-7">
-                  Send a follow-up after sending if no response
-                </p>
-              )}
+            ))}
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => addReminder('before_deadline')} className="flex-1">
+                <Plus className="h-4 w-4 mr-1" /> Before deadline
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => addReminder('after_sending')} className="flex-1">
+                <Clock className="h-4 w-4 mr-1" /> After sending
+              </Button>
             </div>
           </div>
 
@@ -153,19 +136,18 @@ export function FollowUpModal({ open, onOpenChange, onSave, initialConfig, deadl
             </Button>
             <Button onClick={handleSave}>
               <Check className="h-4 w-4 mr-2" />
-              Save Configuration
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Date Time Picker */}
       <DateTimePickerModal
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        onDateTimeSelect={handleDateTimeSelect}
-        label={addingType === 'before' ? "Select Reminder Time (Before Deadline)" : "Select Follow-up Time (After Sending)"}
-        maxDate={addingType === 'before' && deadlineDateTime ? new Date(deadlineDateTime) : undefined}
+        open={pickerIndex !== null}
+        onOpenChange={(o) => !o && setPickerIndex(null)}
+        onDateTimeSelect={handlePicked}
+        label={pickingKind === 'before_deadline' ? 'Reminder time (before deadline)' : 'Follow-up time (after sending)'}
+        maxDate={pickingKind === 'before_deadline' && deadlineDateTime ? new Date(deadlineDateTime) : undefined}
       />
     </>
   )
