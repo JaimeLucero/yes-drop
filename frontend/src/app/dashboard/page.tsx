@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -95,7 +95,16 @@ function DashboardView() {
   }
 
   const selectFolder = (value: FolderValue) => setParams({ status: value, id: null })
-  const selectRequest = (id: string) => setParams({ id })
+  // Stable across background refetches so memoized rows keep their handler.
+  const selectRequest = useCallback(
+    (id: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('id', id)
+      const qs = params.toString()
+      router.replace(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false })
+    },
+    [searchParams, router]
+  )
   const clearSelection = () => setParams({ id: null })
 
   const deleteMutation = useMutation({

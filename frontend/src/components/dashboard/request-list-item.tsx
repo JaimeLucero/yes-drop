@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import type { ApprovalRequest } from '@/lib/api'
 import { StatusDot, STATUS_META } from './status-meta'
@@ -13,16 +14,18 @@ function initial(email: string | null): string {
 interface RequestListItemProps {
   request: ApprovalRequest
   selected: boolean
-  onSelect: () => void
+  onSelect: (id: string) => void
 }
 
-export function RequestListItem({ request, selected, onSelect }: RequestListItemProps) {
+// Memoized: background refetches keep unchanged request refs (react-query
+// structural sharing), so rows don't re-render and clicks are never dropped.
+function RequestListItemImpl({ request, selected, onSelect }: RequestListItemProps) {
   const ts = request.sent_at || request.scheduled_send_at || request.created_at
   const preview = request.message?.trim() || STATUS_META[request.status].label
 
   return (
     <button
-      onClick={onSelect}
+      onClick={() => onSelect(request.id)}
       aria-current={selected ? 'true' : undefined}
       className={cn(
         'flex w-full items-start gap-3 border-l-2 px-4 py-3 text-left transition-colors',
@@ -50,3 +53,5 @@ export function RequestListItem({ request, selected, onSelect }: RequestListItem
     </button>
   )
 }
+
+export const RequestListItem = memo(RequestListItemImpl)

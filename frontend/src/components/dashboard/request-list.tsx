@@ -130,7 +130,7 @@ export function RequestList({
         {!isLoading &&
           !error &&
           filtered.map((r) => (
-            <RequestListItem key={r.id} request={r} selected={r.id === selectedId} onSelect={() => onSelect(r.id)} />
+            <RequestListItem key={r.id} request={r} selected={r.id === selectedId} onSelect={onSelect} />
           ))}
       </div>
     </div>
