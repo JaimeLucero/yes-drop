@@ -61,24 +61,31 @@ export function DashboardSidebar({
     <div className="flex h-full flex-col">
       {/* Brand + collapse toggle */}
       <div className={cn('flex h-16 shrink-0 items-center', collapsed ? 'justify-center px-2' : 'justify-between px-4')}>
-        {collapsed ? (
-          <BrandLogo href="/dashboard" withText={false} />
-        ) : (
-          <BrandLogo href="/dashboard" />
-        )}
-        {onToggleCollapse && (
+        <BrandLogo href="/dashboard" withText={!collapsed} />
+        {!collapsed && onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={cn(
-              'hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:inline-flex',
-              collapsed && 'absolute left-1/2 top-16 -translate-x-1/2'
-            )}
+            aria-label="Collapse sidebar"
+            className="hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:inline-flex"
           >
-            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+            <ChevronsLeft className="h-4 w-4" />
           </button>
         )}
       </div>
+
+      {/* Expand control (icon-rail mode) */}
+      {collapsed && onToggleCollapse && (
+        <div className="px-2 pb-1">
+          <button
+            onClick={onToggleCollapse}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            className="flex h-8 w-full items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* New request */}
       <div className={cn('pb-2', collapsed ? 'px-2 pt-6' : 'px-3')}>
