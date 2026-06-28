@@ -56,13 +56,16 @@ function DashboardView() {
 
   const launchTour = () => startDashboardTour((href) => router.push(href))
 
-  // Auto-run the tour right after signup (?tour=1) or on a user's first dashboard visit.
+  // Auto-run the tour ONLY right after signup (?tour=1), once. Returning users
+  // are never forced into it (the overlay would block the dashboard) — they can
+  // replay via the sidebar "Take a tour" button.
   const tourStarted = useRef(false)
   useEffect(() => {
     if (tourStarted.current) return
-    if (searchParams.get('tour') === '1' || !tourDone()) {
+    if (searchParams.get('tour') === '1' && !tourDone()) {
       tourStarted.current = true
       const t = setTimeout(launchTour, 700)
+      router.replace('/dashboard', { scroll: false }) // strip ?tour=1 so refresh won't re-trigger
       return () => clearTimeout(t)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

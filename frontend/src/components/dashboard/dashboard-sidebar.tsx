@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Compass } from 'lucide-react'
@@ -9,6 +10,16 @@ import { BrandLogo } from '@/components/brand-logo'
 import { useTheme } from '@/components/theme-provider'
 import { signOut } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface DashboardSidebarProps {
   activeStatus: FolderValue
@@ -31,6 +42,7 @@ export function DashboardSidebar({
   onStartTour,
 }: DashboardSidebarProps) {
   const { theme, toggleTheme } = useTheme()
+  const [signOutOpen, setSignOutOpen] = useState(false)
   const { data: stats } = useQuery({ queryKey: ['my-stats'], queryFn: getMyStats, refetchInterval: 30000 })
   const { data: limit } = useQuery({ queryKey: ['daily-limit'], queryFn: getDailyLimit, refetchInterval: 60000 })
 
@@ -178,7 +190,7 @@ export function DashboardSidebar({
             {!collapsed && 'Theme'}
           </button>
           <button
-            onClick={handleSignOut}
+            onClick={() => setSignOutOpen(true)}
             title={collapsed ? 'Sign out' : undefined}
             className={cn(
               'flex items-center justify-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
@@ -190,6 +202,19 @@ export function DashboardSidebar({
           </button>
         </div>
       </div>
+
+      <AlertDialog open={signOutOpen} onOpenChange={setSignOutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogDescription>You&apos;ll need to sign in again to manage your requests.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSignOut}>Sign out</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
