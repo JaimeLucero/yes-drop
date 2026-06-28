@@ -90,7 +90,9 @@ def _humanize_since(delta: timedelta) -> str:
 
 
 def _require_gmail_connected(user_id: str) -> None:
-    """Hard-gate: a request can only be sent if the user connected Gmail."""
+    """Hard-gate (gmail mode only): a request can only be sent if Gmail is connected."""
+    if settings.SEND_PROVIDER != "gmail":
+        return
     if not gmail_service.get_status(user_id).get("connected"):
         raise HTTPException(
             400,
@@ -254,26 +256,36 @@ async def send_approval_email(
     </html>
     """
 
-    # Send through the requester's own Gmail. Replies thread in their inbox.
-    rfc_message_id = (
-        record.get("gmail_message_id") or f"<approval-{record['id']}@yesdrop.online>"
-    )
-    _, thread_id = gmail_service.send(
-        user_id=record["user_id"],
-        to_email=record["approver_email"],
-        subject=f"{subject_prefix}Approval Request: {record['title']}",
-        html=html,
-        rfc_message_id=rfc_message_id,
-        in_reply_to=record.get("gmail_message_id") if is_followup else None,
-        thread_id=record.get("gmail_thread_id"),
-    )
-    # Persist threading ids from the first send so follow-ups stay in-thread.
-    if not is_followup and (
-        not record.get("gmail_message_id") or not record.get("gmail_thread_id")
-    ):
-        repository.update(
-            record["id"],
-            {"gmail_message_id": rfc_message_id, "gmail_thread_id": thread_id},
+    if settings.SEND_PROVIDER == "gmail":
+        # Send through the requester's own Gmail. Replies thread in their inbox.
+        rfc_message_id = (
+            record.get("gmail_message_id") or f"<approval-{record['id']}@yesdrop.online>"
+        )
+        _, thread_id = gmail_service.send(
+            user_id=record["user_id"],
+            to_email=record["approver_email"],
+            subject=f"{subject_prefix}Approval Request: {record['title']}",
+            html=html,
+            rfc_message_id=rfc_message_id,
+            in_reply_to=record.get("gmail_message_id") if is_followup else None,
+            thread_id=record.get("gmail_thread_id"),
+        )
+        # Persist threading ids from the first send so follow-ups stay in-thread.
+        if not is_followup and (
+            not record.get("gmail_message_id") or not record.get("gmail_thread_id")
+        ):
+            repository.update(
+                record["id"],
+                {"gmail_message_id": rfc_message_id, "gmail_thread_id": thread_id},
+            )
+    else:
+        # Brevo (default): send from the verified YesDrop domain.
+        await email_service.send_approval_request(
+            to_email=record["approver_email"],
+            request_title=record["title"],
+            requester_email=record.get("requester_email") or "noreply@em.yesdrop.online",
+            html_content=html,
+            subject_prefix=subject_prefix,
         )
 
 
@@ -800,8 +812,10 @@ class ApprovalRequestService:
         if req["status"] != "scheduled":
             raise HTTPException(400, "Request is not scheduled")
 
-        # Gmail must be connected. Leave it scheduled so it sends once connected.
-        if not gmail_service.get_status(req["user_id"]).get("connected"):
+        # In gmail mode, Gmail must be connected. Leave scheduled so it sends once connected.
+        if settings.SEND_PROVIDER == "gmail" and not gmail_service.get_status(
+            req["user_id"]
+        ).get("connected"):
             logger.warning(
                 f"Scheduled request {request_id} not sent: Gmail not connected"
             )

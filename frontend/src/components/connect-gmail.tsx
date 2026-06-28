@@ -6,6 +6,9 @@ import { Mail, CheckCircle2, AlertCircle } from 'lucide-react'
 import { getGoogleStatus, disconnectGoogle } from '@/lib/api'
 import { connectGmail } from '@/lib/supabase'
 
+// "gmail" gates sending on a connected Gmail; "brevo" (default) sends via YesDrop's domain.
+export const SEND_PROVIDER = process.env.NEXT_PUBLIC_SEND_PROVIDER || 'brevo'
+
 export function useGoogleStatus() {
   return useQuery({ queryKey: ['google-status'], queryFn: getGoogleStatus, staleTime: 30_000 })
 }
@@ -26,6 +29,7 @@ async function startConnect() {
 export function ConnectGmailBanner() {
   const { data, isLoading } = useGoogleStatus()
   const [busy, setBusy] = useState(false)
+  if (SEND_PROVIDER !== 'gmail') return null // Brevo mode: no Gmail gate
   if (isLoading || data?.connected) return null
   return (
     <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">

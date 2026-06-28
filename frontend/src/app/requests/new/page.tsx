@@ -9,7 +9,7 @@ import { AuthGuard } from '@/components/auth-guard'
 import { ScheduleModal } from '@/components/schedule-modal'
 import { ReminderPlanner } from '@/components/reminders/reminder-planner'
 import { startCreateFormTour } from '@/components/dashboard/product-tour'
-import { ConnectGmailBanner, useGoogleStatus } from '@/components/connect-gmail'
+import { ConnectGmailBanner, useGoogleStatus, SEND_PROVIDER } from '@/components/connect-gmail'
 import { format } from 'date-fns'
 
 function NewRequestForm() {
@@ -405,7 +405,7 @@ function NewRequestForm() {
             <button
               type="submit"
               data-tour="submit"
-              disabled={mutation.isPending || !approverEmail || !title || (action === 'schedule' && !scheduledTime) || (action !== 'draft' && !gmail?.connected)}
+              disabled={mutation.isPending || !approverEmail || !title || (action === 'schedule' && !scheduledTime) || (SEND_PROVIDER === 'gmail' && action !== 'draft' && !gmail?.connected)}
               className="inline-flex items-center justify-center rounded-lg bg-primary px-7 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {mutation.isPending ? (

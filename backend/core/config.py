@@ -25,6 +25,11 @@ class Settings:
 
     CRON_SECRET: str | None = os.getenv("CRON_SECRET")
 
+    # Outbound provider for approval emails: "brevo" or "gmail".
+    # Default brevo while Gmail OAuth verification is pending; flip to "gmail"
+    # (here + NEXT_PUBLIC_SEND_PROVIDER on the frontend) once verified.
+    SEND_PROVIDER: str = os.getenv("SEND_PROVIDER", "brevo")
+
     # Google OAuth (Gmail send). Same client the Supabase Google provider uses.
     GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
