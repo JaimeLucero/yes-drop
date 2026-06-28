@@ -30,8 +30,8 @@ const AUTO_ADVANCE_MS = 5000
 const steps = [
   {
     icon: Send,
-    title: 'Create a request',
-    caption: 'Fill in who needs to approve, a title, and optionally attach a file. Send now or schedule it.',
+    title: 'Send a request by email',
+    caption: 'Add who approves, a title, a deadline, and any files. Send now or schedule it for later.',
     Panel: CreatePanel,
   },
   {
@@ -48,8 +48,8 @@ const steps = [
   },
   {
     icon: LayoutDashboard,
-    title: 'Track everything live',
-    caption: 'Your dashboard updates in real time. Automatic reminders chase non-responders so you never send a follow-up email again.',
+    title: 'Reminders + tracking, automatic',
+    caption: 'Automatic reminders chase non-responders until your deadline, and your dashboard updates live — so you never write a follow-up again.',
     Panel: DashboardPanel,
   },
 ]

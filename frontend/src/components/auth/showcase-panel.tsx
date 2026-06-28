@@ -57,7 +57,7 @@ export function ShowcasePanel() {
             Approvals that close themselves.
           </h2>
           <p className="text-base leading-relaxed text-primary-foreground/75">
-            Send a request, get a one-click decision by email, and track every response in one place.
+            Email approvals with deadlines and automatic reminders — every response tracked in one place.
           </p>
         </div>
 

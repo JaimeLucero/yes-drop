@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createRequest, uploadFile, createDraft, scheduleRequest, type Reminder } from '@/lib/api'
 import { Upload, AlertCircle, CheckCircle, Calendar, Clock } from 'lucide-react'
@@ -11,8 +11,10 @@ import { DateTimePickerModal } from '@/components/date-time-picker-modal'
 import { FollowUpModal } from '@/components/followup-modal'
 import { format } from 'date-fns'
 
-export default function NewRequestPage() {
+function NewRequestForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const welcome = searchParams.get('welcome') === '1'
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -124,6 +126,15 @@ export default function NewRequestPage() {
     <div className="min-h-screen bg-background">
       {/* Form */}
       <main className="mx-auto max-w-3xl px-6 py-8">
+        {welcome && (
+          <div className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+            <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div>
+              <p className="text-sm font-medium text-foreground">You&apos;re in — send your first approval request</p>
+              <p className="text-sm text-muted-foreground">Add an approver and a title, then hit send. That&apos;s the whole thing.</p>
+            </div>
+          </div>
+        )}
         <div className="mb-8">
           <h1 className="text-2xl font-heading font-semibold text-foreground">New request</h1>
           <p className="mt-1 text-sm text-muted-foreground">Send it now, save a draft, or schedule it for later.</p>
@@ -494,5 +505,13 @@ export default function NewRequestPage() {
       </main>
     </div>
     </AuthGuard>
+  )
+}
+
+export default function NewRequestPage() {
+  return (
+    <Suspense>
+      <NewRequestForm />
+    </Suspense>
   )
 }

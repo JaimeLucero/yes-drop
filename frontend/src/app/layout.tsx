@@ -28,8 +28,9 @@ const ibmPlex = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "YesDrop",
-  description: "Approval requests made easy",
+  title: "YesDrop — email approvals on autopilot",
+  description:
+    "Send approval requests by email, set deadlines, and let automatic reminders chase the reply. Track every response in one place.",
 };
 
 export default function RootLayout({

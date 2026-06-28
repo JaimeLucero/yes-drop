@@ -14,6 +14,7 @@ import {
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { RequestList } from '@/components/dashboard/request-list'
 import { RequestDetail, RequestDetailEmpty } from '@/components/dashboard/request-detail'
+import { FirstRunPanel } from '@/components/dashboard/first-run-panel'
 import type { FolderValue } from '@/components/dashboard/status-meta'
 import { RescheduleModal } from '@/components/reschedule-modal'
 import { EditRequestModal } from '@/components/edit-request-modal'
@@ -142,6 +143,8 @@ function DashboardView() {
     />
   )
 
+  const isFirstRun = status === 'all' && !isLoading && !error && (requests?.length ?? 0) === 0
+
   const detail = selected ? (
     <RequestDetail
       request={selected}
@@ -151,6 +154,8 @@ function DashboardView() {
       onSendNow={handleSendNow}
       onDelete={handleDelete}
     />
+  ) : isFirstRun ? (
+    <FirstRunPanel />
   ) : (
     <RequestDetailEmpty />
   )

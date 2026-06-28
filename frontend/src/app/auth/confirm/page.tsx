@@ -35,7 +35,8 @@ function ConfirmInner() {
         setError(verifyError.message)
         return
       }
-      router.replace('/dashboard')
+      // Drop the just-verified user straight into creating their first request.
+      router.replace('/requests/new?welcome=1')
     }
     run()
   }, [params, router])

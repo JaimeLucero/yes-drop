@@ -48,7 +48,7 @@ function LoginInner() {
   const params = useSearchParams()
 
   const [checking, setChecking] = useState(true)
-  const [mode, setMode] = useState<Mode>('signin')
+  const [mode, setMode] = useState<Mode>(params.get('mode') === 'signup' ? 'signup' : 'signin')
   const [sentKind, setSentKind] = useState<'verify' | 'reset'>('verify')
 
   const [fullName, setFullName] = useState('')
