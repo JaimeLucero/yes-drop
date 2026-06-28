@@ -19,6 +19,21 @@ class ReminderInput(BaseModel):
     custom_message: str | None = None
 
 
+class ReminderPlanRequest(BaseModel):
+    """Ask opencode to turn a natural-language intent into a reminder schedule."""
+
+    intent: str
+    sent_at: str | None = None  # ISO; when the request will be sent (default: now)
+    deadline: str | None = None  # ISO; the response deadline, if already chosen
+
+
+class ReminderPlanResponse(BaseModel):
+    """A proposed (unsaved) schedule the user verifies, with absolute times."""
+
+    deadline: str | None = None  # absolute ISO (may be derived from intent)
+    reminders: list[ReminderInput] = []
+
+
 class ApprovalRequestCreate(BaseModel):
     """Create request (immediate send or scheduled)"""
 
@@ -101,6 +116,7 @@ class ApprovalRequestResponse(BaseModel):
     deadline: datetime | None
     deadline_days: int | None
     follow_up_strategy: dict | None
+    reminders: list[ReminderInput] = []
     created_at: datetime
     updated_at: datetime
 

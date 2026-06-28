@@ -46,6 +46,18 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         if email_events:
             viewed_at = email_events[0].get("created_at")
 
+    # Configured reminders (for pending/scheduled requests) to show in the UI
+    reminders = []
+    if record["status"] in ("pending", "scheduled"):
+        reminders = [
+            {
+                "kind": r["kind"],
+                "send_at": r["send_at"],
+                "custom_message": r.get("custom_message"),
+            }
+            for r in repository.get_reminders_for_request(record["id"])
+        ]
+
     return ApprovalRequestResponse(
         id=record["id"],
         user_id=record["user_id"],
@@ -66,6 +78,7 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         deadline=record.get("deadline"),
         deadline_days=record.get("deadline_days"),
         follow_up_strategy=record.get("follow_up_strategy"),
+        reminders=reminders,
         created_at=record["created_at"],
         updated_at=record["updated_at"],
     )
@@ -355,6 +368,22 @@ class ApprovalRequestRepository:
             supabase.table("request_reminders").insert(rows).execute()
         except Exception as e:
             logger.error(f"Error creating reminders: {e}")
+
+    @staticmethod
+    def get_reminders_for_request(request_id: str) -> list[dict]:
+        """Active (non-cancelled) reminders for display, ordered by time."""
+        try:
+            result = (
+                supabase.table("request_reminders")
+                .select("kind,send_at,custom_message,status")
+                .eq("request_id", request_id)
+                .order("send_at", desc=False)
+                .execute()
+            )
+            return [r for r in (result.data or []) if r.get("status") != "cancelled"]
+        except Exception as e:
+            logger.error(f"Error fetching reminders: {e}")
+            return []
 
     @staticmethod
     def cancel_pending_reminders(request_id: str) -> None:

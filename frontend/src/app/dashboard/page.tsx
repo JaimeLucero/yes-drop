@@ -229,7 +229,7 @@ function DashboardView() {
         onReschedule={handleScheduleSubmit}
         initialDate={selected?.scheduled_send_at || undefined}
         initialDeadline={selected?.deadline || undefined}
-        initialReminders={null}
+        initialReminders={selected?.reminders ?? null}
       />
 
       <EditRequestModal

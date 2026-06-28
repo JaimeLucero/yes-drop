@@ -24,6 +24,7 @@ export interface ApprovalRequest {
     days_before_deadline?: number
     days_after_sending?: number
   } | null
+  reminders?: Reminder[]
   created_at: string
   updated_at: string
 }
@@ -135,6 +136,31 @@ export async function disconnectGoogle(): Promise<{ success: boolean }> {
     headers: { Authorization: `Bearer ${session.access_token}` },
   })
   if (!response.ok) throw new Error('Failed to disconnect')
+  return response.json()
+}
+
+export interface ReminderPlan {
+  deadline: string | null
+  reminders: Reminder[]
+}
+
+export async function generateReminderPlan(
+  intent: string,
+  sentAt?: string | null,
+  deadline?: string | null
+): Promise<ReminderPlan> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Not authenticated')
+  const response = await fetch(`${BACKEND_URL}/api/reminders/generate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ intent, sent_at: sentAt, deadline }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Could not generate a schedule')
+  }
   return response.json()
 }
 

@@ -4,11 +4,10 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createRequest, uploadFile, createDraft, type Reminder } from '@/lib/api'
-import { Upload, AlertCircle, CheckCircle, Calendar, Clock } from 'lucide-react'
+import { Upload, AlertCircle, CheckCircle, Calendar } from 'lucide-react'
 import { AuthGuard } from '@/components/auth-guard'
 import { ScheduleModal } from '@/components/schedule-modal'
-import { DateTimePickerModal } from '@/components/date-time-picker-modal'
-import { FollowUpModal } from '@/components/followup-modal'
+import { ReminderPlanner } from '@/components/reminders/reminder-planner'
 import { startCreateFormTour } from '@/components/dashboard/product-tour'
 import { ConnectGmailBanner, useGoogleStatus } from '@/components/connect-gmail'
 import { format } from 'date-fns'
@@ -43,16 +42,13 @@ function NewRequestForm() {
   const [action, setAction] = useState<'send' | 'draft' | 'schedule'>('send')
   const [scheduledTime, setScheduledTime] = useState('')
   const [deadlineDateTime, setDeadlineDateTime] = useState<string>('')
-  const [followUpEnabled, setFollowUpEnabled] = useState(true)
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
-  const [deadlineModalOpen, setDeadlineModalOpen] = useState(false)
-  const [followUpModalOpen, setFollowUpModalOpen] = useState(false)
 
   const mutation = useMutation({
     mutationFn: async (data: { approver_email: string; title: string; message?: string; file_url?: string }) => {
       // Reminders carry absolute times (no day rounding); empty when disabled.
-      const activeReminders = followUpEnabled ? reminders : []
+      const activeReminders = reminders
       const deadlineDays = deadlineDateTime ? calculateDaysUntil(deadlineDateTime) : 3
 
       if (action === 'draft') {
@@ -380,79 +376,19 @@ function NewRequestForm() {
             </div>
           )}
 
-          {/* Follow-up Strategy */}
+          {/* Deadline & reminders */}
           {(action === 'schedule' || action === 'send') && (
             <div className="group" data-tour="deadline">
               <label className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
-                Deadline & Follow-up Reminders
+                Deadline & Reminders
               </label>
-              
-              <div className="space-y-4">
-                {/* Enable/Disable Toggle */}
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={followUpEnabled}
-                    onChange={(e) => setFollowUpEnabled(e.target.checked)}
-                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                  />
-                  <span className="text-sm font-medium text-foreground">Enable follow-up reminders</span>
-                </label>
-
-                {followUpEnabled && (
-                  <div className="space-y-4 p-4 bg-secondary/50 rounded-xl border border-border">
-                    {/* Deadline DateTime */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Response Deadline
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setDeadlineModalOpen(true)}
-                        className="w-full flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
-                      >
-                        <Calendar className="h-5 w-5 text-foreground/60" />
-                        <span className={deadlineDateTime ? 'text-foreground font-medium' : 'text-foreground/40'}>
-                          {deadlineDateTime
-                            ? format(new Date(deadlineDateTime), 'EEEE, MMMM d, yyyy p')
-                            : 'Select deadline date and time'}
-                        </span>
-                      </button>
-                      <p className="text-xs text-foreground/50 mt-1">
-                        Requests are marked ignored if no response arrives by this time
-                      </p>
-                    </div>
-
-                    {/* Follow-up Configuration */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Reminder Times
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setFollowUpModalOpen(true)}
-                        className="w-full flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
-                      >
-                        <Clock className="h-5 w-5 text-foreground/60" />
-                        <span className={reminders.length ? 'text-foreground font-medium' : 'text-foreground/40'}>
-                          {reminders.length
-                            ? `${reminders.length} reminder${reminders.length > 1 ? 's' : ''} configured`
-                            : 'Configure reminder times'}
-                        </span>
-                      </button>
-                      <p className="text-xs text-foreground/50 mt-1">
-                        Set specific times for reminder emails
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {!followUpEnabled && (
-                  <p className="text-xs text-foreground/50 italic">
-                    No reminder emails will be sent. The request will still expire at the deadline if not responded to.
-                  </p>
-                )}
-              </div>
+              <ReminderPlanner
+                deadlineDateTime={deadlineDateTime}
+                onDeadlineChange={setDeadlineDateTime}
+                reminders={reminders}
+                onRemindersChange={setReminders}
+                baseTime={action === 'schedule' ? scheduledTime : null}
+              />
             </div>
           )}
 
@@ -501,25 +437,6 @@ function NewRequestForm() {
           onOpenChange={setScheduleModalOpen}
           onSchedule={setScheduledTime}
           initialDate={scheduledTime || undefined}
-        />
-
-        {/* Deadline Modal */}
-        <DateTimePickerModal
-          open={deadlineModalOpen}
-          onOpenChange={setDeadlineModalOpen}
-          onDateTimeSelect={setDeadlineDateTime}
-          initialDateTime={deadlineDateTime}
-          label="Set Response Deadline"
-          minDate={new Date(new Date().getTime() + 60 * 60 * 1000)} // At least 1 hour from now
-        />
-
-        {/* Follow-up Modal */}
-        <FollowUpModal
-          open={followUpModalOpen}
-          onOpenChange={setFollowUpModalOpen}
-          onSave={setReminders}
-          initialReminders={reminders}
-          deadlineDateTime={deadlineDateTime}
         />
       </main>
     </div>

@@ -11,6 +11,7 @@ import {
   Paperclip,
   Eye,
   ExternalLink,
+  Bell,
 } from 'lucide-react'
 import type { ApprovalRequest } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -128,6 +129,22 @@ export function RequestDetail({ request, onClose, onEdit, onSchedule, onSendNow,
             <span className="data-num text-amber-700 dark:text-amber-400">
               {format(new Date(request.deadline), 'EEE, MMM d, yyyy p')}
             </span>
+          </Field>
+        )}
+
+        {request.reminders && request.reminders.length > 0 && (
+          <Field label={`Reminders (${request.reminders.length})`}>
+            <ul className="space-y-1">
+              {request.reminders.map((r, i) => (
+                <li key={`${r.send_at}-${i}`} className="flex items-center gap-2 text-foreground/80">
+                  <Bell className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="data-num">{format(new Date(r.send_at), 'EEE, MMM d • p')}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {r.kind === 'before_deadline' ? 'before deadline' : 'after sending'}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </Field>
         )}
 

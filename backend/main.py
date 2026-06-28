@@ -19,6 +19,7 @@ from services.requests import service
 from services.email import email_service
 from services.database import repository
 from services.gmail_service import gmail_service
+from services.opencode_service import opencode_service
 from models.schemas import (
     ApprovalRequestCreate,
     ApprovalRequestDraft,
@@ -28,6 +29,8 @@ from models.schemas import (
     ScheduleRequest,
     GoogleConnectRequest,
     GoogleStatusResponse,
+    ReminderPlanRequest,
+    ReminderPlanResponse,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -154,6 +157,17 @@ async def google_disconnect(user_id: str = Depends(get_current_user)):
     """Disconnect the user's Gmail sending account."""
     gmail_service.disconnect(user_id)
     return {"success": True}
+
+
+@app.post("/api/reminders/generate", response_model=ReminderPlanResponse)
+async def generate_reminder_plan(
+    data: ReminderPlanRequest,
+    user_id: str = Depends(get_current_user),
+):
+    """Generate a reminder schedule from a natural-language plan (opencode)."""
+    return opencode_service.generate_reminder_plan(
+        data.intent, data.sent_at, data.deadline
+    )
 
 
 # Short-lived in-process cache for the public stats endpoint so landing-page

@@ -31,9 +31,11 @@ class Settings:
     # Fernet key (urlsafe base64, 32 bytes) for encrypting stored refresh tokens.
     TOKEN_ENC_KEY: str | None = os.getenv("TOKEN_ENC_KEY")
 
-    # opencode (reminder schedule generation)
+    # opencode (reminder schedule generation). OpenAI-compatible gateway.
+    # Default to a FREE model ($0/token) so generation never incurs charges.
     OPENCODE_API_KEY: str | None = os.getenv("OPENCODE_API_KEY")
-    OPENCODE_MODEL: str = os.getenv("OPENCODE_MODEL", "")
+    OPENCODE_MODEL: str = os.getenv("OPENCODE_MODEL", "deepseek-v4-flash-free")
+    OPENCODE_BASE_URL: str = os.getenv("OPENCODE_BASE_URL", "https://opencode.ai/zen/v1")
 
 
 settings = Settings()
