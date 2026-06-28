@@ -20,8 +20,8 @@ export function DailyLimitIndicator({ onLimitReached }: DailyLimitIndicatorProps
   }
 
   const percentage = (limit.used / limit.limit) * 100
-  const isNearLimit = limit.used >= 4
-  const isAtLimit = limit.used >= 5
+  const isAtLimit = limit.used >= limit.limit
+  const isNearLimit = limit.used >= limit.limit - 1
 
   if (isAtLimit) {
     onLimitReached?.()

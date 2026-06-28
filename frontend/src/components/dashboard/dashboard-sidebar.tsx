@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Moon, Sun, LogOut } from 'lucide-react'
+import { Plus, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Compass } from 'lucide-react'
 import { getMyStats, getDailyLimit } from '@/lib/api'
 import { NAV_FOLDERS, type FolderValue } from './status-meta'
 import { BrandLogo } from '@/components/brand-logo'
@@ -15,9 +15,21 @@ interface DashboardSidebarProps {
   onSelectFolder: (value: FolderValue) => void
   /** called after a nav action — used to close the mobile drawer */
   onNavigate?: () => void
+  /** desktop icon-rail mode */
+  collapsed?: boolean
+  onToggleCollapse?: () => void
+  /** start the product tour */
+  onStartTour?: () => void
 }
 
-export function DashboardSidebar({ activeStatus, onSelectFolder, onNavigate }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  activeStatus,
+  onSelectFolder,
+  onNavigate,
+  collapsed = false,
+  onToggleCollapse,
+  onStartTour,
+}: DashboardSidebarProps) {
   const { theme, toggleTheme } = useTheme()
   const { data: stats } = useQuery({ queryKey: ['my-stats'], queryFn: getMyStats, refetchInterval: 30000 })
   const { data: limit } = useQuery({ queryKey: ['daily-limit'], queryFn: getDailyLimit, refetchInterval: 60000 })
@@ -35,22 +47,46 @@ export function DashboardSidebar({ activeStatus, onSelectFolder, onNavigate }: D
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 shrink-0 items-center px-4">
-        <BrandLogo href="/dashboard" />
+      {/* Brand + collapse toggle */}
+      <div className={cn('flex h-16 shrink-0 items-center', collapsed ? 'justify-center px-2' : 'justify-between px-4')}>
+        {collapsed ? (
+          <BrandLogo href="/dashboard" withText={false} />
+        ) : (
+          <BrandLogo href="/dashboard" />
+        )}
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className={cn(
+              'hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:inline-flex',
+              collapsed && 'absolute left-1/2 top-16 -translate-x-1/2'
+            )}
+          >
+            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+          </button>
+        )}
       </div>
 
-      <div className="px-3 pb-2">
+      {/* New request */}
+      <div className={cn('pb-2', collapsed ? 'px-2 pt-6' : 'px-3')}>
         <Link
           href="/requests/new"
           onClick={onNavigate}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          data-tour="new-request"
+          title={collapsed ? 'New request' : undefined}
+          className={cn(
+            'flex items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90',
+            collapsed ? 'h-10 w-10' : 'w-full px-4 py-2.5'
+          )}
         >
           <Plus className="h-4 w-4" />
-          New request
+          {!collapsed && 'New request'}
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
+      {/* Folder nav */}
+      <nav data-tour="folders" className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
         {NAV_FOLDERS.map(({ value, label, Icon }) => {
           const active = activeStatus === value
           const count = countFor(value)
@@ -62,21 +98,28 @@ export function DashboardSidebar({ activeStatus, onSelectFolder, onNavigate }: D
                 onNavigate?.()
               }}
               aria-current={active ? 'page' : undefined}
+              title={collapsed ? label : undefined}
               className={cn(
-                'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                'group flex w-full items-center rounded-lg text-sm transition-colors',
+                collapsed ? 'h-10 justify-center' : 'gap-3 px-3 py-2',
                 active
                   ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground'
               )}
             >
-              <Icon
-                className={cn(
-                  'h-4 w-4 shrink-0',
-                  active ? 'text-primary' : 'text-sidebar-foreground/45 group-hover:text-sidebar-foreground/80'
+              <span className="relative">
+                <Icon
+                  className={cn(
+                    'h-4 w-4 shrink-0',
+                    active ? 'text-primary' : 'text-sidebar-foreground/45 group-hover:text-sidebar-foreground/80'
+                  )}
+                />
+                {collapsed && count != null && count > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
                 )}
-              />
-              <span className="flex-1 truncate text-left">{label}</span>
-              {count != null && count > 0 && (
+              </span>
+              {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
+              {!collapsed && count != null && count > 0 && (
                 <span className={cn('data-num text-xs', active ? 'text-sidebar-accent-foreground' : 'text-sidebar-foreground/45')}>
                   {count}
                 </span>
@@ -86,9 +129,10 @@ export function DashboardSidebar({ activeStatus, onSelectFolder, onNavigate }: D
         })}
       </nav>
 
-      <div className="space-y-2 border-t border-sidebar-border p-3">
-        {limit && (
-          <div className="rounded-lg bg-muted/60 px-3 py-2">
+      {/* Account block */}
+      <div className={cn('space-y-2 border-t border-sidebar-border', collapsed ? 'px-2 py-3' : 'p-3')}>
+        {!collapsed && limit && (
+          <div data-tour="daily-limit" className="rounded-lg bg-muted/60 px-3 py-2">
             <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
               <span>Daily usage</span>
               <span className="data-num">
@@ -99,27 +143,50 @@ export function DashboardSidebar({ activeStatus, onSelectFolder, onNavigate }: D
               <div
                 className={cn(
                   'h-full rounded-full transition-all',
-                  limit.used >= 5 ? 'bg-red-500' : limit.used >= 4 ? 'bg-amber-500' : 'bg-primary'
+                  limit.used >= limit.limit ? 'bg-red-500' : limit.used >= limit.limit - 1 ? 'bg-amber-500' : 'bg-primary'
                 )}
                 style={{ width: `${Math.min((limit.used / limit.limit) * 100, 100)}%` }}
               />
             </div>
           </div>
         )}
-        <div className="flex items-center gap-1">
+
+        {onStartTour && (
+          <button
+            onClick={onStartTour}
+            title={collapsed ? 'Take a tour' : undefined}
+            className={cn(
+              'flex items-center rounded-lg text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              collapsed ? 'h-10 w-full justify-center' : 'w-full gap-2 px-3 py-2'
+            )}
+          >
+            <Compass className="h-4 w-4" />
+            {!collapsed && 'Take a tour'}
+          </button>
+        )}
+
+        <div className={cn('flex items-center gap-1', collapsed && 'flex-col')}>
           <button
             onClick={toggleTheme}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title={collapsed ? 'Theme' : undefined}
+            className={cn(
+              'flex items-center justify-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              collapsed ? 'h-10 w-10' : 'flex-1 px-3 py-2'
+            )}
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            Theme
+            {!collapsed && 'Theme'}
           </button>
           <button
             onClick={handleSignOut}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title={collapsed ? 'Sign out' : undefined}
+            className={cn(
+              'flex items-center justify-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+              collapsed ? 'h-10 w-10' : 'flex-1 px-3 py-2'
+            )}
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            {!collapsed && 'Sign out'}
           </button>
         </div>
       </div>

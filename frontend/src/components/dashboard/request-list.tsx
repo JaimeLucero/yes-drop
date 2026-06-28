@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Search, Menu, Inbox } from 'lucide-react'
+import { Search, Menu, Inbox, ChevronsLeft } from 'lucide-react'
 import type { ApprovalRequest } from '@/lib/api'
 import { RequestListItem } from './request-list-item'
 import { NAV_FOLDERS, type FolderValue } from './status-meta'
@@ -14,6 +14,7 @@ interface RequestListProps {
   onSelect: (id: string) => void
   activeStatus: FolderValue
   onOpenNav: () => void
+  onCollapse?: () => void
 }
 
 function ListSkeleton() {
@@ -40,6 +41,7 @@ export function RequestList({
   onSelect,
   activeStatus,
   onOpenNav,
+  onCollapse,
 }: RequestListProps) {
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -80,8 +82,17 @@ export function RequestList({
           </button>
           <h2 className="text-sm font-heading font-semibold text-foreground">{folderLabel}</h2>
           {!isLoading && <span className="data-num text-xs text-muted-foreground">{filtered.length}</span>}
+          {onCollapse && (
+            <button
+              onClick={onCollapse}
+              aria-label="Collapse list"
+              className="ml-auto hidden rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:inline-flex"
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </button>
+          )}
         </div>
-        <div className="relative">
+        <div className="relative" data-tour="search">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             ref={inputRef}

@@ -38,6 +38,10 @@ async def get_user_email(user_id: str) -> Optional[str]:
         return None
 
 
+# Max approval requests a user can send per day.
+DAILY_REQUEST_LIMIT = 15
+
+
 def get_daily_limit_info(user_id: str) -> tuple[int, datetime, str | None]:
     """Get daily usage info using Supabase RPC functions"""
     try:
@@ -251,11 +255,11 @@ class ApprovalRequestService:
         # Check daily limit only if sending immediately
         if not request.scheduled_send_at:
             count, reset_time, _ = get_daily_limit_info(user_id)
-            if count >= 5:
+            if count >= DAILY_REQUEST_LIMIT:
                 raise HTTPException(
                     400,
                     detail={
-                        "message": "Daily limit reached (5 requests/day)",
+                        "message": f"Daily limit reached ({DAILY_REQUEST_LIMIT} requests/day)",
                         "resets_at": reset_time.isoformat(),
                         "suggestion": "Consider scheduling for tomorrow or save as draft",
                     },
@@ -474,11 +478,11 @@ class ApprovalRequestService:
 
         # Check daily limit
         count, reset_time, _ = get_daily_limit_info(user_id)
-        if count >= 5:
+        if count >= DAILY_REQUEST_LIMIT:
             raise HTTPException(
                 400,
                 detail={
-                    "message": "Daily limit reached (5 requests/day)",
+                    "message": f"Daily limit reached ({DAILY_REQUEST_LIMIT} requests/day)",
                     "resets_at": reset_time.isoformat(),
                 },
             )
@@ -600,8 +604,8 @@ class ApprovalRequestService:
 
         return DailyLimitResponse(
             used=count,
-            limit=5,
-            remaining=5 - count,
+            limit=DAILY_REQUEST_LIMIT,
+            remaining=max(0, DAILY_REQUEST_LIMIT - count),
             resets_at=reset_time.isoformat(),
             next_available_date=next_available_str,
         )
@@ -698,7 +702,7 @@ class ApprovalRequestService:
         # Check daily limit
         count, reset_time, next_available = get_daily_limit_info(req["user_id"])
 
-        if count >= 5:
+        if count >= DAILY_REQUEST_LIMIT:
             # Auto-reschedule for next available day
             if next_available:
                 # Parse original scheduled time to keep the same time of day

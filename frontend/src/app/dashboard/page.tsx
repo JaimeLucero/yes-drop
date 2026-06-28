@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -15,6 +15,9 @@ import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { RequestList } from '@/components/dashboard/request-list'
 import { RequestDetail, RequestDetailEmpty } from '@/components/dashboard/request-detail'
 import { FirstRunPanel } from '@/components/dashboard/first-run-panel'
+import { DetailPlaceholder } from '@/components/dashboard/detail-placeholder'
+import { startDashboardTour, tourDone } from '@/components/dashboard/product-tour'
+import { NAV_FOLDERS } from '@/components/dashboard/status-meta'
 import type { FolderValue } from '@/components/dashboard/status-meta'
 import { RescheduleModal } from '@/components/reschedule-modal'
 import { EditRequestModal } from '@/components/edit-request-modal'
@@ -31,6 +34,39 @@ function DashboardView() {
   const [navOpen, setNavOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [panes, setPanes] = useState<{ sidebar: boolean; list: boolean }>(() => {
+    if (typeof window === 'undefined') return { sidebar: false, list: false }
+    try {
+      const v = JSON.parse(localStorage.getItem('yesdrop:panes') || 'null')
+      return v && typeof v === 'object' ? { sidebar: !!v.sidebar, list: !!v.list } : { sidebar: false, list: false }
+    } catch {
+      return { sidebar: false, list: false }
+    }
+  })
+  const updatePanes = (patch: Partial<{ sidebar: boolean; list: boolean }>) =>
+    setPanes((prev) => {
+      const next = { ...prev, ...patch }
+      try {
+        localStorage.setItem('yesdrop:panes', JSON.stringify(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+
+  const launchTour = () => startDashboardTour((href) => router.push(href))
+
+  // Auto-run the tour right after signup (?tour=1) or on a user's first dashboard visit.
+  const tourStarted = useRef(false)
+  useEffect(() => {
+    if (tourStarted.current) return
+    if (searchParams.get('tour') === '1' || !tourDone()) {
+      tourStarted.current = true
+      const t = setTimeout(launchTour, 700)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { data: requests, isLoading, error } = useQuery({
     queryKey: ['requests', status],
@@ -140,25 +176,32 @@ function DashboardView() {
       onSelect={selectRequest}
       activeStatus={status}
       onOpenNav={() => setNavOpen(true)}
+      onCollapse={() => updatePanes({ list: true })}
     />
   )
 
-  const isFirstRun = status === 'all' && !isLoading && !error && (requests?.length ?? 0) === 0
+  const isEmpty = !isLoading && !error && (requests?.length ?? 0) === 0
+  const folderLabel = NAV_FOLDERS.find((f) => f.value === status)?.label
 
-  const detail = selected ? (
-    <RequestDetail
-      request={selected}
-      onClose={clearSelection}
-      onEdit={() => setEditModalOpen(true)}
-      onSchedule={() => setScheduleModalOpen(true)}
-      onSendNow={handleSendNow}
-      onDelete={handleDelete}
-    />
-  ) : isFirstRun ? (
-    <FirstRunPanel />
-  ) : (
-    <RequestDetailEmpty />
-  )
+  let detail: React.ReactNode
+  if (selected) {
+    detail = (
+      <RequestDetail
+        request={selected}
+        onClose={clearSelection}
+        onEdit={() => setEditModalOpen(true)}
+        onSchedule={() => setScheduleModalOpen(true)}
+        onSendNow={handleSendNow}
+        onDelete={handleDelete}
+      />
+    )
+  } else if (status === 'all') {
+    // "All requests" is the home: first-run funnel when empty, analytics overview otherwise.
+    detail = isEmpty ? <FirstRunPanel /> : <RequestDetailEmpty />
+  } else {
+    // Other folders: a light placeholder, not the global analytics overview.
+    detail = <DetailPlaceholder label={folderLabel} />
+  }
 
   return (
     <>
@@ -170,6 +213,11 @@ function DashboardView() {
         detail={detail}
         navOpen={navOpen}
         onCloseNav={() => setNavOpen(false)}
+        sidebarCollapsed={panes.sidebar}
+        onToggleSidebar={() => updatePanes({ sidebar: !panes.sidebar })}
+        listCollapsed={panes.list}
+        onToggleList={() => updatePanes({ list: !panes.list })}
+        onStartTour={launchTour}
       />
 
       <RescheduleModal

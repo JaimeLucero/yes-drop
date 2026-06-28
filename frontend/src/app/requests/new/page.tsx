@@ -1,14 +1,15 @@
 'use client'
 
-import { Suspense, useState, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createRequest, uploadFile, createDraft, scheduleRequest, type Reminder } from '@/lib/api'
+import { createRequest, uploadFile, createDraft, type Reminder } from '@/lib/api'
 import { Upload, AlertCircle, CheckCircle, Calendar, Clock } from 'lucide-react'
 import { AuthGuard } from '@/components/auth-guard'
 import { ScheduleModal } from '@/components/schedule-modal'
 import { DateTimePickerModal } from '@/components/date-time-picker-modal'
 import { FollowUpModal } from '@/components/followup-modal'
+import { startCreateFormTour } from '@/components/dashboard/product-tour'
 import { format } from 'date-fns'
 
 function NewRequestForm() {
@@ -17,6 +18,18 @@ function NewRequestForm() {
   const welcome = searchParams.get('welcome') === '1'
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Second leg of the product tour: walk the form fields.
+  const tourStarted = useRef(false)
+  useEffect(() => {
+    if (tourStarted.current) return
+    if (searchParams.get('tour') === '1') {
+      tourStarted.current = true
+      const t = setTimeout(startCreateFormTour, 600)
+      return () => clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [approverEmail, setApproverEmail] = useState('')
   const [title, setTitle] = useState('')
@@ -145,7 +158,7 @@ function NewRequestForm() {
             <label htmlFor="approver_email" className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
               Approver Email <span className="text-red-500">*</span>
             </label>
-            <div className="relative">
+            <div className="relative" data-tour="approver">
               <input
                 id="approver_email"
                 type="email"
@@ -166,6 +179,7 @@ function NewRequestForm() {
             </label>
             <input
               id="title"
+              data-tour="title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -198,6 +212,7 @@ function NewRequestForm() {
               Attachments <span className="text-foreground/50 font-normal text-xs">(optional)</span>
             </label>
             <div
+              data-tour="attachments"
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -364,7 +379,7 @@ function NewRequestForm() {
 
           {/* Follow-up Strategy */}
           {(action === 'schedule' || action === 'send') && (
-            <div className="group">
+            <div className="group" data-tour="deadline">
               <label className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
                 Deadline & Follow-up Reminders
               </label>
@@ -450,6 +465,7 @@ function NewRequestForm() {
           <div className="flex items-center gap-3 border-t border-border pt-8">
             <button
               type="submit"
+              data-tour="submit"
               disabled={mutation.isPending || !approverEmail || !title || (action === 'schedule' && !scheduledTime)}
               className="inline-flex items-center justify-center rounded-lg bg-primary px-7 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >

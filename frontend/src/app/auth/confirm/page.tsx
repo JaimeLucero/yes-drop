@@ -16,7 +16,7 @@ function Spinner({ label }: { label: string }) {
   )
 }
 
-const DONE = '/requests/new?welcome=1'
+const DONE = '/dashboard?tour=1'
 
 function ConfirmInner() {
   const router = useRouter()
