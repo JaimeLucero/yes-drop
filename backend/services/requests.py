@@ -364,6 +364,16 @@ class ApprovalRequestService:
                     f"Failed to send approval email for request {req_id}: {e}",
                     exc_info=True,
                 )
+                # Never leave a non-sent request looking 'Sent'. Revert to a
+                # draft so the user sees it didn't go out and can retry.
+                repository.update(req_id, {"status": "draft", "sent_at": None})
+                raise HTTPException(
+                    502,
+                    detail={
+                        "message": "We couldn't send the email. Reconnect your Gmail in Settings, then try again — your request was saved as a draft.",
+                        "code": "send_failed",
+                    },
+                )
 
             # Send notification to requester
             if request.notify_requester and requester_email:
@@ -546,6 +556,17 @@ class ApprovalRequestService:
             logger.error(
                 f"Failed to send approval email for request {request_id}: {e}",
                 exc_info=True,
+            )
+            # Roll back to its prior status so a failed send isn't shown as 'Sent'.
+            repository.update(
+                request_id, {"status": req["status"], "sent_at": req.get("sent_at")}
+            )
+            raise HTTPException(
+                502,
+                detail={
+                    "message": "We couldn't send the email. Reconnect your Gmail in Settings, then try again.",
+                    "code": "send_failed",
+                },
             )
 
         # Send notification to requester using stored email
