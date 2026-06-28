@@ -99,13 +99,14 @@ class GmailService:
         if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
             raise RuntimeError("GOOGLE_CLIENT_ID/SECRET not configured")
         refresh_token = _fernet().decrypt(acct["refresh_token_encrypted"].encode()).decode()
+        # Do NOT pass scopes here: sending `scope` on a refresh makes Google
+        # return invalid_scope. Refresh uses whatever scopes were granted.
         creds = Credentials(
             token=None,
             refresh_token=refresh_token,
             client_id=settings.GOOGLE_CLIENT_ID,
             client_secret=settings.GOOGLE_CLIENT_SECRET,
             token_uri=TOKEN_URI,
-            scopes=[GMAIL_SEND_SCOPE],
         )
         creds.refresh(GoogleAuthRequest())
         return creds, acct
