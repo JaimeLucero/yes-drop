@@ -18,6 +18,7 @@ from auth.user import get_current_user
 from services.requests import service
 from services.email import email_service
 from services.database import repository
+from services.gmail_service import gmail_service
 from models.schemas import (
     ApprovalRequestCreate,
     ApprovalRequestDraft,
@@ -25,6 +26,8 @@ from models.schemas import (
     ApprovalRequestResponse,
     DailyLimitResponse,
     ScheduleRequest,
+    GoogleConnectRequest,
+    GoogleStatusResponse,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -126,6 +129,31 @@ async def get_daily_limit(
 ):
     """Get current daily usage and reset time"""
     return service.get_daily_limit(user_id)
+
+
+@app.get("/api/google/status", response_model=GoogleStatusResponse)
+async def google_status(user_id: str = Depends(get_current_user)):
+    """Whether the user has connected a Gmail account for sending."""
+    return gmail_service.get_status(user_id)
+
+
+@app.post("/api/google/connect", response_model=GoogleStatusResponse)
+async def google_connect(
+    data: GoogleConnectRequest,
+    user_id: str = Depends(get_current_user),
+):
+    """Store the one-time Google provider refresh token (captured after OAuth)."""
+    gmail_service.store_tokens(
+        user_id, data.refresh_token, email=data.email, scopes=data.scopes
+    )
+    return gmail_service.get_status(user_id)
+
+
+@app.delete("/api/google/disconnect")
+async def google_disconnect(user_id: str = Depends(get_current_user)):
+    """Disconnect the user's Gmail sending account."""
+    gmail_service.disconnect(user_id)
+    return {"success": True}
 
 
 # Short-lived in-process cache for the public stats endpoint so landing-page

@@ -2,6 +2,7 @@
 Business logic for approval requests.
 """
 
+import asyncio
 import logging
 import secrets
 import uuid
@@ -13,6 +14,7 @@ from fastapi import HTTPException
 
 from services.database import repository, to_response, supabase
 from services.email import email_service
+from services.gmail_service import gmail_service
 from core.config import settings
 from models.schemas import (
     ApprovalRequestCreate,
@@ -87,6 +89,18 @@ def _humanize_since(delta: timedelta) -> str:
     return f"{round(total_hours / 24)} days"
 
 
+def _require_gmail_connected(user_id: str) -> None:
+    """Hard-gate: a request can only be sent if the user connected Gmail."""
+    if not gmail_service.get_status(user_id).get("connected"):
+        raise HTTPException(
+            400,
+            detail={
+                "message": "Connect Gmail to send approval requests.",
+                "code": "gmail_not_connected",
+            },
+        )
+
+
 async def send_approval_email(
     record: dict, is_followup: bool = False, reminder: dict | None = None
 ):
@@ -102,7 +116,12 @@ async def send_approval_email(
     )
     reject_url = f"{settings.FRONTEND_URL}/action?token={record['token']}&action=reject"
 
-    requester_display = record.get("requester_email", record["user_id"][:8])
+    requester_display = (
+        record.get("sender_name")
+        or record.get("sender_email")
+        or record.get("requester_email")
+        or record["user_id"][:8]
+    )
     # A reminder may override the body copy with its own custom message.
     body_text = (reminder or {}).get("custom_message") or record.get("message")
     message_section = (
@@ -111,7 +130,7 @@ async def send_approval_email(
         else ""
     )
     file_section = (
-        f'<p style="margin: 16px 0;"><a href="{record["file_url"]}" style="color: #0066cc; text-decoration: none; font-weight: 500;">📎 View attached file</a></p>'
+        f'<p style="margin: 16px 0;"><a href="{record["file_url"]}" style="color: #33436a; text-decoration: none; font-weight: 500;">📎 View attached file</a></p>'
         if record.get("file_url")
         else ""
     )
@@ -186,16 +205,16 @@ async def send_approval_email(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px 0;">
+        <div style="background: #33436a; padding: 24px 0;">
             <div style="max-width: 600px; margin: 0 auto; padding: 0 24px;">
-                <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">YesDrop</h1>
-                <p style="color: rgba(255,255,255,0.8); margin: 4px 0 0 0; font-size: 14px;">Approval request from {requester_display}</p>
+                <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em;">YesDrop</h1>
+                <p style="color: rgba(255,255,255,0.75); margin: 6px 0 0 0; font-size: 14px;">Approval request from {requester_display}</p>
             </div>
         </div>
 
         <div style="max-width: 600px; margin: 0 auto; padding: 40px 24px;">
             {urgency_banner}
-            <div style="background: #f9fafb; border-left: 4px solid #667eea; padding: 20px; border-radius: 4px; margin-bottom: 32px;">
+            <div style="background: #f9fafb; border-left: 4px solid #33436a; padding: 20px; border-radius: 4px; margin-bottom: 32px;">
                 <h2 style="color: #1f2937; margin: 0 0 8px 0; font-size: 20px; font-weight: 600;">{record["title"]}</h2>
                 <p style="color: #6b7280; margin: 0; font-size: 13px;">Needs your approval</p>
             </div>
@@ -215,7 +234,7 @@ async def send_approval_email(
             <div style="border-top: 1px solid #e5e7eb; padding-top: 24px; margin-top: 32px;">
                 <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
                     Please respond by <strong>{deadline_str}</strong> or this request will be marked as ignored.<br/>
-                    <a href="{settings.FRONTEND_URL}/dashboard" style="color: #667eea; text-decoration: none;">View all requests on YesDrop</a>
+                    <a href="{settings.FRONTEND_URL}/dashboard" style="color: #33436a; text-decoration: none; font-weight: 500;">View all requests on YesDrop</a>
                 </p>
             </div>
         </div>
@@ -223,7 +242,7 @@ async def send_approval_email(
         <div style="background: #f3f4f6; padding: 24px 0; text-align: center; border-top: 1px solid #e5e7eb; margin-top: 32px;">
             <p style="color: #6b7280; font-size: 12px; margin: 0; max-width: 600px; margin-left: auto; margin-right: auto; padding: 0 24px;">
                 YesDrop makes approval requests simple and seamless.<br/>
-                <a href="https://yesdrop.online" style="color: #667eea; text-decoration: none;">Learn more</a>
+                <a href="https://yesdrop.online" style="color: #33436a; text-decoration: none;">Learn more</a>
             </p>
         </div>
 
@@ -232,13 +251,27 @@ async def send_approval_email(
     </html>
     """
 
-    await email_service.send_approval_request(
-        to_email=record["approver_email"],
-        request_title=record["title"],
-        requester_email=record.get("requester_email") or "noreply@em.yesdrop.online",
-        html_content=html,
-        subject_prefix=subject_prefix,
+    # Send through the requester's own Gmail. Replies thread in their inbox.
+    rfc_message_id = (
+        record.get("gmail_message_id") or f"<approval-{record['id']}@yesdrop.online>"
     )
+    _, thread_id = gmail_service.send(
+        user_id=record["user_id"],
+        to_email=record["approver_email"],
+        subject=f"{subject_prefix}Approval Request: {record['title']}",
+        html=html,
+        rfc_message_id=rfc_message_id,
+        in_reply_to=record.get("gmail_message_id") if is_followup else None,
+        thread_id=record.get("gmail_thread_id"),
+    )
+    # Persist threading ids from the first send so follow-ups stay in-thread.
+    if not is_followup and (
+        not record.get("gmail_message_id") or not record.get("gmail_thread_id")
+    ):
+        repository.update(
+            record["id"],
+            {"gmail_message_id": rfc_message_id, "gmail_thread_id": thread_id},
+        )
 
 
 class ApprovalRequestService:
@@ -254,6 +287,7 @@ class ApprovalRequestService:
 
         # Check daily limit only if sending immediately
         if not request.scheduled_send_at:
+            _require_gmail_connected(user_id)
             count, reset_time, _ = get_daily_limit_info(user_id)
             if count >= DAILY_REQUEST_LIMIT:
                 raise HTTPException(
@@ -475,6 +509,8 @@ class ApprovalRequestService:
 
         if req["status"] not in ("draft", "scheduled"):
             raise HTTPException(403, "Only drafts can be sent")
+
+        _require_gmail_connected(user_id)
 
         # Check daily limit
         count, reset_time, _ = get_daily_limit_info(user_id)
@@ -698,6 +734,13 @@ class ApprovalRequestService:
 
         if req["status"] != "scheduled":
             raise HTTPException(400, "Request is not scheduled")
+
+        # Gmail must be connected. Leave it scheduled so it sends once connected.
+        if not gmail_service.get_status(req["user_id"]).get("connected"):
+            logger.warning(
+                f"Scheduled request {request_id} not sent: Gmail not connected"
+            )
+            return {"success": False, "reason": "gmail_not_connected"}
 
         # Check daily limit
         count, reset_time, next_available = get_daily_limit_info(req["user_id"])

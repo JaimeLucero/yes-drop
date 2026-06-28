@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { connectGoogleToken } from '@/lib/api'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
@@ -19,6 +20,15 @@ export default function AuthCallbackPage() {
       }
 
       if (data.session) {
+        // Capture the one-time Google refresh token for Gmail sending.
+        const rt = data.session.provider_refresh_token
+        if (rt) {
+          try {
+            await connectGoogleToken(rt, data.session.user?.email)
+          } catch {
+            /* non-fatal — user can connect later from settings */
+          }
+        }
         router.push('/dashboard')
       } else {
         router.push('/login')

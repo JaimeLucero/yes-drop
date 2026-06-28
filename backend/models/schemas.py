@@ -31,6 +31,23 @@ class ApprovalRequestCreate(BaseModel):
     deadline_days: int = 3
     follow_up_strategy: FollowUpStrategy | None = None
     reminders: list[ReminderInput] | None = None
+    # Optional verified sender identity (reply-to + CC). Must belong to the user.
+    sender_email: EmailStr | None = None
+    sender_name: str | None = None
+
+
+class GoogleConnectRequest(BaseModel):
+    """Capture the one-time Google provider refresh token after OAuth consent."""
+
+    refresh_token: str
+    email: str | None = None
+    scopes: str | None = None
+
+
+class GoogleStatusResponse(BaseModel):
+    connected: bool = False
+    email: str | None = None
+    last_error: str | None = None
 
 
 class ApprovalRequestDraft(BaseModel):
@@ -68,6 +85,8 @@ class ApprovalRequestResponse(BaseModel):
     id: str
     user_id: str
     requester_email: str | None  # Email of the person who created the request
+    sender_email: str | None = None  # Chosen sender identity (reply-to + CC)
+    sender_name: str | None = None
     approver_email: str | None
     title: str | None
     message: str | None

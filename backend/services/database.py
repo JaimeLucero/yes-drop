@@ -50,6 +50,8 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         id=record["id"],
         user_id=record["user_id"],
         requester_email=record.get("requester_email"),
+        sender_email=record.get("sender_email"),
+        sender_name=record.get("sender_name"),
         approver_email=record.get("approver_email"),
         title=record.get("title"),
         message=record.get("message"),

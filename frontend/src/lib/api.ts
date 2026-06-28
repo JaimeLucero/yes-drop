@@ -96,6 +96,48 @@ export async function getDailyLimit(): Promise<DailyLimit> {
   return response.json()
 }
 
+export interface GoogleStatus {
+  connected: boolean
+  email: string | null
+  last_error: string | null
+}
+
+export async function getGoogleStatus(): Promise<GoogleStatus> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Not authenticated')
+  const response = await fetch(`${BACKEND_URL}/api/google/status`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+  if (!response.ok) throw new Error('Failed to fetch Google status')
+  return response.json()
+}
+
+export async function connectGoogleToken(refreshToken: string, email?: string | null): Promise<GoogleStatus> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Not authenticated')
+  const response = await fetch(`${BACKEND_URL}/api/google/connect`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken, email }),
+  })
+  if (!response.ok) throw new Error('Failed to connect Google account')
+  return response.json()
+}
+
+export async function disconnectGoogle(): Promise<{ success: boolean }> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Not authenticated')
+  const response = await fetch(`${BACKEND_URL}/api/google/disconnect`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+  if (!response.ok) throw new Error('Failed to disconnect')
+  return response.json()
+}
+
 export async function fetchRequests(status?: string): Promise<ApprovalRequest[]> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -183,7 +225,7 @@ export async function scheduleRequest(
 
   if (!session) throw new Error('Not authenticated')
 
-  const body: any = { scheduled_send_at: scheduledSendAt }
+  const body: Record<string, unknown> = { scheduled_send_at: scheduledSendAt }
   if (reminders !== undefined) body.reminders = reminders
   if (deadlineDays !== undefined) body.deadline_days = deadlineDays
 
@@ -284,7 +326,7 @@ export async function uploadFile(file: File): Promise<string> {
   const fileExt = file.name.split('.').pop()
   const fileName = `${crypto.randomUUID()}.${fileExt}`
 
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from('approval-files')
     .upload(fileName, file, {
       upsert: false,

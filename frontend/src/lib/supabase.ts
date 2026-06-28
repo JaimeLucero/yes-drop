@@ -12,12 +12,38 @@ function origin(): string {
   return typeof window !== 'undefined' ? window.location.origin : ''
 }
 
+// Gmail send scope — granted at Google login so we can send approvals as the user.
+export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send'
+
 export async function signInWithGoogle() {
   const supabase = createClient()
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: `${origin()}/auth/callback`,
+      scopes: GMAIL_SEND_SCOPE,
+      // access_type=offline + prompt=consent → Google returns a refresh token
+      // (Supabase surfaces it once as session.provider_refresh_token).
+      queryParams: { access_type: 'offline', prompt: 'consent' },
+    },
+  })
+  if (error) throw error
+  return data
+}
+
+/**
+ * Connect a Google account for sending without changing the login identity
+ * (for email/password users, or Google users who declined the scope). Uses
+ * identity linking; the refresh token is captured at /auth/callback.
+ */
+export async function connectGmail() {
+  const supabase = createClient()
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider: 'google',
+    options: {
+      redirectTo: `${origin()}/auth/callback?connect=gmail`,
+      scopes: GMAIL_SEND_SCOPE,
+      queryParams: { access_type: 'offline', prompt: 'consent' },
     },
   })
   if (error) throw error

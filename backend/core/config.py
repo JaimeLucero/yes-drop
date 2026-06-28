@@ -25,5 +25,15 @@ class Settings:
 
     CRON_SECRET: str | None = os.getenv("CRON_SECRET")
 
+    # Google OAuth (Gmail send). Same client the Supabase Google provider uses.
+    GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
+    # Fernet key (urlsafe base64, 32 bytes) for encrypting stored refresh tokens.
+    TOKEN_ENC_KEY: str | None = os.getenv("TOKEN_ENC_KEY")
+
+    # opencode (reminder schedule generation)
+    OPENCODE_API_KEY: str | None = os.getenv("OPENCODE_API_KEY")
+    OPENCODE_MODEL: str = os.getenv("OPENCODE_MODEL", "")
+
 
 settings = Settings()

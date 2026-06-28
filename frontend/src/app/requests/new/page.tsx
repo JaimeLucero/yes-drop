@@ -10,6 +10,7 @@ import { ScheduleModal } from '@/components/schedule-modal'
 import { DateTimePickerModal } from '@/components/date-time-picker-modal'
 import { FollowUpModal } from '@/components/followup-modal'
 import { startCreateFormTour } from '@/components/dashboard/product-tour'
+import { ConnectGmailBanner, useGoogleStatus } from '@/components/connect-gmail'
 import { format } from 'date-fns'
 
 function NewRequestForm() {
@@ -38,6 +39,7 @@ function NewRequestForm() {
   const [fileUrl, setFileUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const { data: gmail } = useGoogleStatus()
   const [action, setAction] = useState<'send' | 'draft' | 'schedule'>('send')
   const [scheduledTime, setScheduledTime] = useState('')
   const [deadlineDateTime, setDeadlineDateTime] = useState<string>('')
@@ -152,6 +154,7 @@ function NewRequestForm() {
           <h1 className="text-2xl font-heading font-semibold text-foreground">New request</h1>
           <p className="mt-1 text-sm text-muted-foreground">Send it now, save a draft, or schedule it for later.</p>
         </div>
+        {action !== 'draft' && <ConnectGmailBanner />}
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Approver Email */}
           <div className="group">
@@ -466,7 +469,7 @@ function NewRequestForm() {
             <button
               type="submit"
               data-tour="submit"
-              disabled={mutation.isPending || !approverEmail || !title || (action === 'schedule' && !scheduledTime)}
+              disabled={mutation.isPending || !approverEmail || !title || (action === 'schedule' && !scheduledTime) || (action !== 'draft' && !gmail?.connected)}
               className="inline-flex items-center justify-center rounded-lg bg-primary px-7 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {mutation.isPending ? (

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Compass } from 'lucide-react'
+import { Plus, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Compass, Settings } from 'lucide-react'
 import { getMyStats, getDailyLimit } from '@/lib/api'
 import { NAV_FOLDERS, type FolderValue } from './status-meta'
 import { BrandLogo } from '@/components/brand-logo'
@@ -183,6 +183,19 @@ export function DashboardSidebar({
             {!collapsed && 'Take a tour'}
           </button>
         )}
+
+        <Link
+          href="/settings"
+          onClick={onNavigate}
+          title={collapsed ? 'Settings' : undefined}
+          className={cn(
+            'flex items-center rounded-lg text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+            collapsed ? 'h-10 w-full justify-center' : 'w-full gap-2 px-3 py-2'
+          )}
+        >
+          <Settings className="h-4 w-4" />
+          {!collapsed && 'Settings'}
+        </Link>
 
         <div className={cn('flex items-center gap-1', collapsed && 'flex-col')}>
           <button
