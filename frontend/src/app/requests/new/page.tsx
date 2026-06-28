@@ -4,7 +4,8 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createRequest, uploadFile, createDraft, scheduleRequest, type Reminder } from '@/lib/api'
-import { Upload, AlertCircle, File, CheckCircle, Calendar, Clock, X } from 'lucide-react'
+import { Upload, AlertCircle, CheckCircle, Calendar, Clock } from 'lucide-react'
+import { AuthGuard } from '@/components/auth-guard'
 import { ScheduleModal } from '@/components/schedule-modal'
 import { DateTimePickerModal } from '@/components/date-time-picker-modal'
 import { FollowUpModal } from '@/components/followup-modal'
@@ -32,7 +33,7 @@ export default function NewRequestPage() {
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false)
 
   const mutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: { approver_email: string; title: string; message?: string; file_url?: string }) => {
       // Reminders carry absolute times (no day rounding); empty when disabled.
       const activeReminders = followUpEnabled ? reminders : []
       const deadlineDays = deadlineDateTime ? calculateDaysUntil(deadlineDateTime) : 3
@@ -66,11 +67,6 @@ export default function NewRequestPage() {
     const diffMs = target.getTime() - now.getTime()
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
     return Math.max(1, diffDays)
-  }
-
-  function toUTCISOString(date: Date): string {
-    // Convert local date to UTC ISO string
-    return date.toISOString()
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,10 +120,15 @@ export default function NewRequestPage() {
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-background">
       {/* Form */}
-      <main className="max-w-3xl mx-auto px-6 py-8">
-        <form onSubmit={handleSubmit} className="space-y-10">
+      <main className="mx-auto max-w-3xl px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-heading font-semibold text-foreground">New request</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Send it now, save a draft, or schedule it for later.</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-8">
           {/* Approver Email */}
           <div className="group">
             <label htmlFor="approver_email" className="block text-sm font-heading font-semibold text-foreground mb-3 uppercase tracking-wide">
@@ -141,7 +142,7 @@ export default function NewRequestPage() {
                 onChange={(e) => setApproverEmail(e.target.value)}
                 placeholder="approver@example.com"
                 required
-                className="w-full px-5 py-3 bg-background border-2 border-border rounded-xl text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full px-5 py-3 bg-card border border-border rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
             <p className="text-xs text-foreground/50 mt-2">The email address of the person who needs to approve this request</p>
@@ -159,7 +160,7 @@ export default function NewRequestPage() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Q3 2024 Budget Approval"
               required
-              className="w-full px-5 py-3 bg-background border-2 border-border rounded-xl text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full px-5 py-3 bg-card border border-border rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
             <p className="text-xs text-foreground/50 mt-2">A clear, concise title for this approval request</p>
           </div>
@@ -175,7 +176,7 @@ export default function NewRequestPage() {
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Add any context or details that will help the approver make a decision..."
               rows={5}
-              className="w-full px-5 py-3 bg-background border-2 border-border rounded-xl text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+              className="w-full px-5 py-3 bg-card border border-border rounded-lg text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
             />
             <p className="text-xs text-foreground/50 mt-2">Provide context to help your approver make a decision</p>
           </div>
@@ -189,10 +190,10 @@ export default function NewRequestPage() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-all ${
+              className={`relative rounded-xl border-2 border-dashed p-10 text-center transition-colors ${
                 dragOver
-                  ? 'border-primary bg-primary/10 scale-105'
-                  : 'border-border bg-background hover:border-primary/50 hover:bg-primary/5'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border bg-card hover:border-primary/50 hover:bg-muted/50'
               }`}
             >
               <input
@@ -206,7 +207,7 @@ export default function NewRequestPage() {
               {!file && (
                 <div className="space-y-4">
                   <div className="flex justify-center">
-                    <div className="p-4 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl">
+                    <div className="rounded-xl bg-primary/10 p-4">
                       <Upload className="h-8 w-8 text-primary" />
                     </div>
                   </div>
@@ -215,11 +216,11 @@ export default function NewRequestPage() {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="text-accent font-semibold hover:text-accent/80 transition-colors"
+                      className="font-semibold text-primary transition-colors hover:text-primary/80"
                     >
                       Click to upload
                     </button>
-                    <span className="text-foreground/60 mx-2">or drag and drop</span>
+                    <span className="mx-2 text-muted-foreground">or drag and drop</span>
                   </div>
                   <p className="text-xs text-foreground/50 font-medium">PNG, JPG, PDF, Excel, Word, or any file up to 10MB</p>
                 </div>
@@ -237,7 +238,7 @@ export default function NewRequestPage() {
               {file && fileUrl && (
                 <div className="space-y-4">
                   <div className="flex justify-center">
-                    <div className="p-4 bg-gradient-to-br from-emerald-100/50 to-emerald-50/50 dark:from-emerald-950/40 dark:to-emerald-950/20 rounded-xl">
+                    <div className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950/30">
                       <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
                     </div>
                   </div>
@@ -269,7 +270,7 @@ export default function NewRequestPage() {
               What do you want to do?
             </label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+              <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-all ${
                 action === 'send'
                   ? 'border-primary bg-primary/5'
                   : 'border-border hover:border-primary/50'
@@ -283,12 +284,12 @@ export default function NewRequestPage() {
                   className="mr-3"
                 />
                 <div>
-                  <p className="font-semibold text-foreground">Send Now</p>
-                  <p className="text-xs text-foreground/60">Send immediately to approver</p>
+                  <p className="font-semibold text-foreground">Send now</p>
+                  <p className="text-xs text-muted-foreground">Send immediately to the approver</p>
                 </div>
               </label>
 
-              <label className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+              <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-all ${
                 action === 'draft'
                   ? 'border-primary bg-primary/5'
                   : 'border-border hover:border-primary/50'
@@ -302,12 +303,12 @@ export default function NewRequestPage() {
                   className="mr-3"
                 />
                 <div>
-                  <p className="font-semibold text-foreground">Save Draft</p>
-                  <p className="text-xs text-foreground/60">Save for later</p>
+                  <p className="font-semibold text-foreground">Save draft</p>
+                  <p className="text-xs text-muted-foreground">Save for later</p>
                 </div>
               </label>
 
-              <label className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+              <label className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-all ${
                 action === 'schedule'
                   ? 'border-primary bg-primary/5'
                   : 'border-border hover:border-primary/50'
@@ -322,7 +323,7 @@ export default function NewRequestPage() {
                 />
                 <div>
                   <p className="font-semibold text-foreground">Schedule</p>
-                  <p className="text-xs text-foreground/60">Send at a specific time</p>
+                  <p className="text-xs text-muted-foreground">Send at a specific time</p>
                 </div>
               </label>
             </div>
@@ -337,7 +338,7 @@ export default function NewRequestPage() {
               <button
                 type="button"
                 onClick={() => setScheduleModalOpen(true)}
-                className="w-full flex items-center gap-2 px-5 py-3 bg-background border-2 border-border rounded-xl text-foreground hover:border-primary/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-left"
+                className="w-full flex items-center gap-2 px-5 py-3 bg-card border border-border rounded-lg text-foreground hover:border-primary/50 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-left"
               >
                 <Calendar className="h-5 w-5 text-foreground/60" />
                 <span className={scheduledTime ? 'text-foreground' : 'text-foreground/40'}>
@@ -379,7 +380,7 @@ export default function NewRequestPage() {
                       <button
                         type="button"
                         onClick={() => setDeadlineModalOpen(true)}
-                        className="w-full flex items-center gap-2 px-4 py-3 bg-background border-2 border-border rounded-xl text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
+                        className="w-full flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
                       >
                         <Calendar className="h-5 w-5 text-foreground/60" />
                         <span className={deadlineDateTime ? 'text-foreground font-medium' : 'text-foreground/40'}>
@@ -389,7 +390,7 @@ export default function NewRequestPage() {
                         </span>
                       </button>
                       <p className="text-xs text-foreground/50 mt-1">
-                        Requests will be marked as "ignored" if not responded to by this time
+                        Requests are marked ignored if no response arrives by this time
                       </p>
                     </div>
 
@@ -401,7 +402,7 @@ export default function NewRequestPage() {
                       <button
                         type="button"
                         onClick={() => setFollowUpModalOpen(true)}
-                        className="w-full flex items-center gap-2 px-4 py-3 bg-background border-2 border-border rounded-xl text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
+                        className="w-full flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-foreground hover:border-primary/50 focus:outline-none focus:border-primary transition-all text-left"
                       >
                         <Clock className="h-5 w-5 text-foreground/60" />
                         <span className={reminders.length ? 'text-foreground font-medium' : 'text-foreground/40'}>
@@ -435,29 +436,29 @@ export default function NewRequestPage() {
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-3 pt-8 border-t-2 border-border">
+          <div className="flex items-center gap-3 border-t border-border pt-8">
             <button
               type="submit"
               disabled={mutation.isPending || !approverEmail || !title || (action === 'schedule' && !scheduledTime)}
-              className="group inline-flex items-center justify-center px-8 py-3 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold rounded-xl hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="inline-flex items-center justify-center rounded-lg bg-primary px-7 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {mutation.isPending ? (
                 <>
-                  <div className="inline-block animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  {action === 'send' ? 'Sending...' : action === 'draft' ? 'Saving...' : 'Scheduling...'}
+                  <div className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"></div>
+                  {action === 'send' ? 'Sending…' : action === 'draft' ? 'Saving…' : 'Scheduling…'}
                 </>
               ) : (
                 <>
-                  {action === 'send' && 'Send Request'}
-                  {action === 'draft' && 'Save Draft'}
-                  {action === 'schedule' && 'Schedule Request'}
+                  {action === 'send' && 'Send request'}
+                  {action === 'draft' && 'Save draft'}
+                  {action === 'schedule' && 'Schedule request'}
                 </>
               )}
             </button>
             <button
               type="button"
               onClick={() => router.push('/dashboard')}
-              className="inline-flex items-center justify-center px-8 py-3 bg-secondary text-secondary-foreground font-semibold rounded-xl border border-border hover:bg-secondary/80 transition-colors"
+              className="inline-flex items-center justify-center rounded-lg border border-border bg-secondary px-7 py-3 font-medium text-secondary-foreground transition-colors hover:bg-muted"
             >
               Cancel
             </button>
@@ -492,5 +493,6 @@ export default function NewRequestPage() {
         />
       </main>
     </div>
+    </AuthGuard>
   )
 }

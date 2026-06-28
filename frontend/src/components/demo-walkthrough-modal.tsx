@@ -131,7 +131,7 @@ export function DemoWalkthroughModal({ open, onOpenChange }: DemoWalkthroughModa
 
           {isLast ? (
             <Link href="/login">
-              <button className="group inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all">
+              <button className="group inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors">
                 Get started free
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -139,7 +139,7 @@ export function DemoWalkthroughModal({ open, onOpenChange }: DemoWalkthroughModa
           ) : (
             <button
               onClick={() => goTo(step + 1)}
-              className="group inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all"
+              className="group inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
             >
               Next
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -165,7 +165,7 @@ function CreatePanel() {
           budget-q3.pdf
         </div>
       </div>
-      <div className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-2.5 text-sm font-semibold">
+      <div className="flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground py-2.5 text-sm font-medium">
         <Send className="h-4 w-4" /> Send request
       </div>
     </div>
@@ -174,13 +174,13 @@ function CreatePanel() {
 
 function EmailPanel() {
   return (
-    <div className="w-full max-w-sm overflow-hidden rounded-xl border border-border bg-white dark:bg-card shadow-lg">
-      <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] px-4 py-3">
-        <p className="text-white font-semibold text-sm">YesDrop</p>
-        <p className="text-white/80 text-[11px]">Approval request from you@acme.com</p>
+    <div className="w-full max-w-sm overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="bg-primary px-4 py-3">
+        <p className="text-primary-foreground font-semibold text-sm">YesDrop</p>
+        <p className="text-primary-foreground/80 text-[11px]">Approval request from you@acme.com</p>
       </div>
       <div className="p-4 space-y-3">
-        <div className="border-l-4 border-[#667eea] bg-secondary/50 px-3 py-2 rounded">
+        <div className="border-l-4 border-primary bg-secondary/50 px-3 py-2 rounded">
           <p className="font-semibold text-sm text-foreground">Q3 Marketing Budget</p>
           <p className="text-[11px] text-foreground/50">Needs your approval</p>
         </div>

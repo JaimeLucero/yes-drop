@@ -46,9 +46,12 @@ function CountUpStat({ target, suffix = '', run }: { target: number; suffix?: st
   )
 }
 
-export function StatStrip() {
+export function StatStrip({ tone = 'default' }: { tone?: 'default' | 'onPrimary' }) {
   const [stats, setStats] = useState<PublicStats | null>(null)
   const [loaded, setLoaded] = useState(false)
+
+  const valueClass = tone === 'onPrimary' ? 'text-primary-foreground' : 'text-foreground'
+  const labelClass = tone === 'onPrimary' ? 'text-primary-foreground/65' : 'text-foreground/55'
 
   useEffect(() => {
     let active = true
@@ -91,7 +94,7 @@ export function StatStrip() {
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-lg">
       {metrics.map((m) => (
         <div key={m.label} className="text-center sm:text-left">
-          <div className="text-2xl lg:text-3xl font-heading font-bold text-foreground tabular-nums">
+          <div className={`text-lg lg:text-xl font-heading font-semibold tabular-nums ${valueClass}`}>
             {/* Animate count-ups only for the real numeric values */}
             {real && m.label === 'Requests sent' && loaded ? (
               <CountUpStat target={stats!.total_sent} run />
@@ -101,7 +104,7 @@ export function StatStrip() {
               m.value
             )}
           </div>
-          <div className="text-xs text-foreground/55 mt-1">{m.label}</div>
+          <div className={`text-xs mt-1 ${labelClass}`}>{m.label}</div>
         </div>
       ))}
     </div>

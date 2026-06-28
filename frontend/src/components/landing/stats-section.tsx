@@ -57,7 +57,7 @@ export function StatsSection() {
     <section className="py-24 border-t border-border">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-14">
-          <span className="inline-flex items-center gap-2 px-4 py-2 bg-accent/10 border border-accent/20 rounded-full text-sm font-medium text-accent mb-4">
+          <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-sm font-medium text-primary mb-4">
             <TrendingUp className="h-4 w-4" /> By the numbers
           </span>
           <h2 className="text-4xl lg:text-5xl font-heading font-bold mb-4">
@@ -83,8 +83,8 @@ export function StatsSection() {
                 <AreaChart data={TREND} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="vol" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.45} />
+                      <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis
@@ -106,7 +106,7 @@ export function StatsSection() {
                   <Area
                     type="monotone"
                     dataKey="v"
-                    stroke="var(--chart-3)"
+                    stroke="var(--chart-1)"
                     strokeWidth={2.5}
                     fill="url(#vol)"
                   />
@@ -122,7 +122,7 @@ export function StatsSection() {
                 <h3 className="font-heading font-semibold text-foreground">Approval rate</h3>
                 <p className="text-sm text-foreground/55">Of requests that get a decision</p>
               </div>
-              <CheckCircle2 className="h-5 w-5 text-accent" />
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="relative flex-1 min-h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -136,7 +136,7 @@ export function StatsSection() {
                     endAngle={-270}
                     stroke="none"
                   >
-                    <Cell fill="var(--chart-1)" />
+                    <Cell fill="var(--chart-3)" />
                     <Cell fill="var(--muted)" />
                   </Pie>
                 </PieChart>

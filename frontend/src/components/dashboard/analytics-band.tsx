@@ -99,8 +99,8 @@ export function AnalyticsBand() {
                 <AreaChart data={volume} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
                   <defs>
                     <linearGradient id="dashVol" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.45} />
+                      <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} />
@@ -114,7 +114,7 @@ export function AnalyticsBand() {
                       color: 'var(--popover-foreground)',
                     }}
                   />
-                  <Area type="monotone" dataKey="count" stroke="var(--chart-4)" strokeWidth={2.5} fill="url(#dashVol)" />
+                  <Area type="monotone" dataKey="count" stroke="var(--chart-1)" strokeWidth={2.5} fill="url(#dashVol)" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
