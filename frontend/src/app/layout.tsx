@@ -28,11 +28,28 @@ const ibmPlex = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.yesdrop.online"),
   title: "YesDrop — email approvals on autopilot",
   description:
     "Send approval requests by email, set deadlines, and let automatic reminders chase the reply. Track every response in one place.",
   verification: {
     google: "6RSi-HY3Dp1Ntaa1wDuRs1N2g1vT7RNTsCdu7dfry08",
+  },
+  openGraph: {
+    title: "YesDrop — email approvals on autopilot",
+    description:
+      "Send approval requests by email, set deadlines, and let automatic reminders chase the reply.",
+    url: "https://www.yesdrop.online",
+    siteName: "YesDrop",
+    images: [{ url: "/yesdrop-logo.png", width: 1600, height: 800, alt: "YesDrop" }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "YesDrop — email approvals on autopilot",
+    description:
+      "Send approval requests by email, set deadlines, and let automatic reminders chase the reply.",
+    images: ["/yesdrop-logo.png"],
   },
 };
 

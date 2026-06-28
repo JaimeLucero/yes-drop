@@ -207,8 +207,11 @@ async def send_approval_email(
     <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
         <div style="background: #33436a; padding: 24px 0;">
             <div style="max-width: 600px; margin: 0 auto; padding: 0 24px;">
-                <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em;">YesDrop</h1>
-                <p style="color: rgba(255,255,255,0.75); margin: 6px 0 0 0; font-size: 14px;">Approval request from {requester_display}</p>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                    <td style="vertical-align: middle;"><img src="{settings.FRONTEND_URL}/yesdrop-icon.png" width="32" height="32" alt="" style="display: block; border-radius: 8px;" /></td>
+                    <td style="vertical-align: middle; padding-left: 10px;"><span style="color: white; font-size: 22px; font-weight: 700; letter-spacing: -0.01em;">YesDrop</span></td>
+                </tr></table>
+                <p style="color: rgba(255,255,255,0.75); margin: 10px 0 0 0; font-size: 14px;">Approval request from {requester_display}</p>
             </div>
         </div>
 
