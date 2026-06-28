@@ -25,7 +25,7 @@ const FAQS: { q: string; a: string }[] = [
 
 export function Faq() {
   return (
-    <section className="py-24">
+    <section id="faq" className="py-24">
       <div className="mx-auto max-w-3xl px-6">
         <div className="mb-12 text-center">
           <h2 className="text-3xl font-heading font-semibold tracking-tight lg:text-4xl">Questions, answered</h2>

@@ -29,7 +29,7 @@ export function FlowDemo() {
   }
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full">
       <div className="relative h-[380px]">
         <Panel active={step === 0}>
           <SendPanel />
@@ -149,7 +149,7 @@ function TrackPanel() {
             <p className="truncate text-sm font-medium text-foreground">Budget approval — Q3</p>
             <p className="truncate text-xs text-muted-foreground">cfo@acme.com approved · just now</p>
           </div>
-          <span className="rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
+          <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
             Approved
           </span>
         </div>

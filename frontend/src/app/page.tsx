@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/supabase'
 import Link from 'next/link'
-import { ArrowRight, Play, Zap, Send, CalendarClock, BellRing, Inbox, Shield, Upload, CheckCircle } from 'lucide-react'
+import { ArrowRight, Play, Zap, Send, CalendarClock, BellRing, Inbox } from 'lucide-react'
 import { Footer } from '@/components/footer'
 import { StatStrip } from '@/components/landing/stat-strip'
 import { StatsSection } from '@/components/landing/stats-section'
@@ -18,25 +18,16 @@ const SIGNUP_HREF = '/login?mode=signup'
 
 export default function LandingPage() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
   const [demoOpen, setDemoOpen] = useState(false)
 
+  // Render the landing immediately; only send already-signed-in users onward.
+  // (Gating the whole page behind a loading flag wedged the back button when
+  // returning to a hashed URL like /#how-it-works.)
   useEffect(() => {
-    const checkAuth = async () => {
-      const user = await getCurrentUser()
-      if (user) router.push('/dashboard')
-      else setIsLoading(false)
-    }
-    checkAuth()
+    getCurrentUser().then((user) => {
+      if (user) router.replace('/dashboard')
+    })
   }, [router])
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
-  }
 
   return (
     <div className="bg-background text-foreground">
@@ -110,7 +101,7 @@ export default function LandingPage() {
                 aria-hidden
                 className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
               />
-              <div className="relative">
+              <div className="relative w-full max-w-md">
                 <FlowDemo />
               </div>
             </div>
@@ -122,7 +113,7 @@ export default function LandingPage() {
       <HowItWorks />
 
       {/* Features */}
-      <section className="border-t border-border bg-card/40 py-24">
+      <section id="features" className="border-t border-border bg-card/40 py-24">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-14 text-center">
             <h2 className="mb-3 text-3xl font-heading font-semibold tracking-tight lg:text-4xl">
@@ -174,19 +165,6 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-
-          {/* Secondary trust line */}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-2">
-              <Shield className="h-4 w-4 text-primary" /> Google sign-in
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <Upload className="h-4 w-4 text-primary" /> File attachments
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-primary" /> Full audit trail
-            </span>
-          </div>
         </div>
       </section>
 
@@ -202,20 +180,45 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="pb-24">
         <div className="mx-auto max-w-5xl px-6">
-          <div className="rounded-2xl bg-primary px-8 py-16 text-center text-primary-foreground">
-            <h2 className="mb-4 text-3xl font-heading font-semibold tracking-tight lg:text-4xl">
-              Ready to stop chasing approvals?
-            </h2>
-            <p className="mx-auto mb-8 max-w-2xl text-lg text-primary-foreground/80">
-              Send your first request in minutes. No credit card required.
-            </p>
-            <Link
-              href={SIGNUP_HREF}
-              className="group inline-flex items-center gap-2 rounded-lg bg-background px-8 py-3.5 font-medium text-foreground transition-colors hover:bg-background/90"
-            >
-              Start for free
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+          <div className="relative overflow-hidden rounded-3xl bg-primary px-8 py-16 text-center text-primary-foreground shadow-xl shadow-primary/20">
+            {/* depth */}
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <div className="animate-aurora-drift absolute -left-20 -top-24 h-72 w-72 rounded-full bg-sky-400/25 blur-3xl" />
+              <div
+                className="animate-aurora-drift absolute -bottom-28 right-[-3rem] h-80 w-80 rounded-full bg-indigo-300/20 blur-3xl"
+                style={{ animationDelay: '-7s' }}
+              />
+              <svg
+                className="absolute inset-0 h-full w-full text-primary-foreground"
+                style={{
+                  maskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 75%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 75%)',
+                }}
+              >
+                <defs>
+                  <pattern id="cta-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+                    <circle cx="1.4" cy="1.4" r="1.4" fill="currentColor" opacity="0.1" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#cta-dots)" />
+              </svg>
+            </div>
+
+            <div className="relative z-10">
+              <h2 className="mb-4 text-3xl font-heading font-semibold tracking-tight lg:text-4xl">
+                Ready to stop chasing approvals?
+              </h2>
+              <p className="mx-auto mb-8 max-w-2xl text-lg text-primary-foreground/80">
+                Send your first request in minutes. No credit card required.
+              </p>
+              <Link
+                href={SIGNUP_HREF}
+                className="group inline-flex items-center gap-2 rounded-lg bg-background px-8 py-3.5 font-medium text-foreground shadow-lg transition-transform hover:-translate-y-0.5"
+              >
+                Start for free
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
           </div>
         </div>
       </section>

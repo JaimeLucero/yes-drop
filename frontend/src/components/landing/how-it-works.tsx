@@ -23,7 +23,7 @@ const STEPS: { n: string; Icon: LucideIcon; title: string; desc: string }[] = [
 
 export function HowItWorks() {
   return (
-    <section className="py-24">
+    <section id="how-it-works" className="py-24">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-14 text-center">
           <span className="mb-3 inline-block text-sm font-medium uppercase tracking-wide text-primary">
@@ -38,19 +38,18 @@ export function HowItWorks() {
           {STEPS.map((s) => (
             <div
               key={s.n}
-              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+              className="group rounded-2xl border border-border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
             >
-              <span
-                aria-hidden
-                className="absolute -right-1 -top-5 font-heading text-7xl font-bold text-primary/[0.06] transition-colors group-hover:text-primary/10"
-              >
-                {s.n}
-              </span>
-              <div className="relative mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                <s.Icon className="h-5 w-5" />
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                  <s.Icon className="h-5 w-5" />
+                </div>
+                <span className="data-num text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Step {s.n}
+                </span>
               </div>
-              <h3 className="relative mb-1.5 font-heading text-lg font-semibold text-foreground">{s.title}</h3>
-              <p className="relative leading-relaxed text-muted-foreground">{s.desc}</p>
+              <h3 className="mb-1.5 font-heading text-lg font-semibold text-foreground">{s.title}</h3>
+              <p className="leading-relaxed text-muted-foreground">{s.desc}</p>
             </div>
           ))}
         </div>

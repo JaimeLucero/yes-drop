@@ -25,17 +25,41 @@ export function AppHeader() {
 
   // Landing page - public header
   if (pathname === '/') {
+    const navLinks = [
+      { label: 'How it works', href: '/#how-it-works' },
+      { label: 'Features', href: '/#features' },
+      { label: 'FAQ', href: '/#faq' },
+    ]
     return (
       <header className={`${headerClass} fixed top-0 w-full z-50`}>
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6">
           <BrandLogo href="/" />
-          <div className="flex items-center gap-3">
+
+          <nav className="hidden items-center gap-7 md:flex">
+            {navLinks.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {l.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-1.5">
             {themeToggle}
             <Link
               href="/login"
-              className="px-5 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+              className="hidden rounded-lg px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:inline-flex"
             >
               Sign in
+            </Link>
+            <Link
+              href="/login?mode=signup"
+              className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Start for free
             </Link>
           </div>
         </div>

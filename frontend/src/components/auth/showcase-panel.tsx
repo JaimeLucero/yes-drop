@@ -10,7 +10,7 @@ import { StatStrip } from '@/components/landing/stat-strip'
  */
 export function ShowcasePanel() {
   return (
-    <div className="relative hidden flex-1 flex-col justify-between overflow-hidden bg-primary p-12 text-primary-foreground lg:flex">
+    <div className="relative hidden flex-1 flex-col justify-center overflow-hidden bg-primary p-12 text-primary-foreground lg:flex">
       {/* Aurora glow */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="animate-aurora-drift absolute -left-16 -top-24 h-80 w-80 rounded-full bg-sky-400/25 blur-3xl" />
@@ -42,16 +42,13 @@ export function ShowcasePanel() {
       </svg>
 
       {/* Foreground */}
-      <div className="relative z-10">
+      <div className="relative z-10 mx-auto w-full max-w-md space-y-8">
         <BrandLogo
           href="/"
           size="lg"
           badgeClassName="bg-primary-foreground/15 text-primary-foreground"
           textClassName="text-primary-foreground"
         />
-      </div>
-
-      <div className="relative z-10 max-w-md space-y-8">
         <div className="space-y-3">
           <h2 className="text-[1.75rem] font-heading font-semibold leading-snug tracking-tight">
             Approvals that close themselves.
@@ -104,11 +101,8 @@ export function ShowcasePanel() {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="relative z-10 space-y-6">
         <StatStrip tone="onPrimary" />
-        <p className="text-sm text-primary-foreground/60">© 2026 YesDrop. Approval workflows made simple.</p>
       </div>
     </div>
   )
