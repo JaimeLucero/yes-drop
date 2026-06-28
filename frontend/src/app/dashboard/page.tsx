@@ -28,8 +28,11 @@ function DashboardView() {
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
 
-  const status = (searchParams.get('status') as FolderValue) || 'all'
-  const selectedId = searchParams.get('id')
+  // Selection + folder are React state (URL is a best-effort mirror). Rendering
+  // from state means a click always updates the UI, independent of router quirks
+  // (Next's router.replace can no-op when the URL already has a query param).
+  const [status, setStatus] = useState<FolderValue>(() => (searchParams.get('status') as FolderValue) || 'all')
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('id'))
 
   const [navOpen, setNavOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -80,32 +83,38 @@ function DashboardView() {
 
   const selected = requests?.find((r) => r.id === selectedId) ?? null
 
-  const setParams = (next: { status?: FolderValue; id?: string | null }) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (next.status !== undefined) {
-      if (next.status === 'all') params.delete('status')
-      else params.set('status', next.status)
-    }
-    if (next.id !== undefined) {
-      if (next.id === null) params.delete('id')
-      else params.set('id', next.id)
-    }
-    const qs = params.toString()
-    router.replace(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false })
-  }
-
-  const selectFolder = (value: FolderValue) => setParams({ status: value, id: null })
-  // Stable across background refetches so memoized rows keep their handler.
-  const selectRequest = useCallback(
-    (id: string) => {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set('id', id)
+  // Mirror state to the URL for deep-linking/refresh. Best-effort: if the router
+  // no-ops, the UI is already correct from state.
+  const syncUrl = useCallback(
+    (nextStatus: FolderValue, nextId: string | null) => {
+      const params = new URLSearchParams()
+      if (nextStatus !== 'all') params.set('status', nextStatus)
+      if (nextId) params.set('id', nextId)
       const qs = params.toString()
       router.replace(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false })
     },
-    [searchParams, router]
+    [router]
   )
-  const clearSelection = () => setParams({ id: null })
+
+  const selectFolder = useCallback(
+    (value: FolderValue) => {
+      setStatus(value)
+      setSelectedId(null)
+      syncUrl(value, null)
+    },
+    [syncUrl]
+  )
+  const selectRequest = useCallback(
+    (id: string) => {
+      setSelectedId(id)
+      syncUrl(status, id)
+    },
+    [status, syncUrl]
+  )
+  const clearSelection = useCallback(() => {
+    setSelectedId(null)
+    syncUrl(status, null)
+  }, [status, syncUrl])
 
   const deleteMutation = useMutation({
     mutationFn: deleteRequest,
