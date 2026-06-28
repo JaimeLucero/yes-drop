@@ -13,8 +13,8 @@ export default function ActionPage() {
 
 function ActionPageSkeleton() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-background/80 px-4">
-      <div className="max-w-md w-full bg-white dark:bg-card rounded-xl border border-border p-6">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
+      <div className="max-w-md w-full bg-card rounded-2xl border border-border p-6 shadow-sm">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-secondary rounded-lg w-3/4"></div>
           <div className="h-4 bg-secondary rounded-lg w-full"></div>

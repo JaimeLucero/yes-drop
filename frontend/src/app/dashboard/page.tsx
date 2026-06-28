@@ -1,41 +1,73 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchRequests, deleteRequest, sendRequestNow, scheduleRequest, updateRequest, type ApprovalRequest } from '@/lib/api'
-import { DailyLimitIndicator } from '@/components/daily-limit-indicator'
-import { RequestFilters, type RequestStatusFilter } from '@/components/request-filters'
-import { RequestCard } from '@/components/request-card'
+import {
+  fetchRequests,
+  deleteRequest,
+  sendRequestNow,
+  scheduleRequest,
+  updateRequest,
+  type Reminder,
+} from '@/lib/api'
+import { DashboardShell } from '@/components/dashboard/dashboard-shell'
+import { RequestList } from '@/components/dashboard/request-list'
+import { RequestDetail, RequestDetailEmpty } from '@/components/dashboard/request-detail'
+import { FirstRunPanel } from '@/components/dashboard/first-run-panel'
+import type { FolderValue } from '@/components/dashboard/status-meta'
 import { RescheduleModal } from '@/components/reschedule-modal'
 import { EditRequestModal } from '@/components/edit-request-modal'
-import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
-import Link from 'next/link'
 import { toast } from 'sonner'
 
-export default function DashboardPage() {
-  const [statusFilter, setStatusFilter] = useState<RequestStatusFilter>('all')
-  const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null)
+function DashboardView() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
 
-  const { data: requests, isLoading, error, refetch } = useQuery({
-    queryKey: ['requests', statusFilter],
-    queryFn: () => fetchRequests(statusFilter === 'all' ? undefined : statusFilter),
+  const status = (searchParams.get('status') as FolderValue) || 'all'
+  const selectedId = searchParams.get('id')
+
+  const [navOpen, setNavOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+
+  const { data: requests, isLoading, error } = useQuery({
+    queryKey: ['requests', status],
+    queryFn: () => fetchRequests(status === 'all' ? undefined : status),
     refetchInterval: 5000,
   })
+
+  const selected = requests?.find((r) => r.id === selectedId) ?? null
+
+  const setParams = (next: { status?: FolderValue; id?: string | null }) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next.status !== undefined) {
+      if (next.status === 'all') params.delete('status')
+      else params.set('status', next.status)
+    }
+    if (next.id !== undefined) {
+      if (next.id === null) params.delete('id')
+      else params.set('id', next.id)
+    }
+    const qs = params.toString()
+    router.replace(qs ? `/dashboard?${qs}` : '/dashboard', { scroll: false })
+  }
+
+  const selectFolder = (value: FolderValue) => setParams({ status: value, id: null })
+  const selectRequest = (id: string) => setParams({ id })
+  const clearSelection = () => setParams({ id: null })
 
   const deleteMutation = useMutation({
     mutationFn: deleteRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
       queryClient.invalidateQueries({ queryKey: ['daily-limit'] })
-      toast.success('Draft deleted successfully')
+      queryClient.invalidateQueries({ queryKey: ['my-stats'] })
+      clearSelection()
+      toast.success('Request deleted')
     },
-    onError: (error) => {
-      toast.error(`Failed to delete: ${error.message}`)
-    },
+    onError: (err) => toast.error(`Couldn't delete: ${err.message}`),
   })
 
   const sendNowMutation = useMutation({
@@ -43,183 +75,133 @@ export default function DashboardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
       queryClient.invalidateQueries({ queryKey: ['daily-limit'] })
-      toast.success('Request sent successfully')
+      queryClient.invalidateQueries({ queryKey: ['my-stats'] })
+      toast.success('Request sent')
     },
-    onError: (error) => {
-      toast.error(`Failed to send: ${error.message}`)
-    },
+    onError: (err) => toast.error(`Couldn't send: ${err.message}`),
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: ({ id, datetime, deadlineDays, followUpStrategy }: { 
-      id: string; 
-      datetime: string;
-      deadlineDays?: number;
-      followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number };
-    }) =>
-      scheduleRequest(id, datetime, followUpStrategy, deadlineDays),
+    mutationFn: ({
+      id,
+      datetime,
+      deadlineDays,
+      reminders,
+    }: {
+      id: string
+      datetime: string
+      deadlineDays?: number
+      reminders?: Reminder[]
+    }) => scheduleRequest(id, datetime, reminders, deadlineDays),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
+      queryClient.invalidateQueries({ queryKey: ['my-stats'] })
       setScheduleModalOpen(false)
-      setSelectedRequest(null)
-      toast.success('Request scheduled successfully')
+      toast.success('Request scheduled')
     },
-    onError: (error) => {
-      toast.error(`Failed to schedule: ${error.message}`)
-    },
+    onError: (err) => toast.error(`Couldn't schedule: ${err.message}`),
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      updateRequest(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateRequest>[1] }) => updateRequest(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
       setEditModalOpen(false)
-      setSelectedRequest(null)
-      toast.success('Request updated successfully')
+      toast.success('Request updated')
     },
-    onError: (error) => {
-      toast.error(`Failed to update: ${error.message}`)
-    },
+    onError: (err) => toast.error(`Couldn't update: ${err.message}`),
   })
 
-  const handleDelete = (request: ApprovalRequest) => {
-    if (confirm(`Delete draft "${request.title || 'Untitled'}"? This cannot be undone.`)) {
-      deleteMutation.mutate(request.id)
+  const handleDelete = () => {
+    if (!selected) return
+    if (confirm(`Delete "${selected.title || 'Untitled'}"? This can't be undone.`)) {
+      deleteMutation.mutate(selected.id)
     }
   }
 
-  const handleSendNow = (request: ApprovalRequest) => {
-    sendNowMutation.mutate(request.id)
+  const handleSendNow = () => {
+    if (selected) sendNowMutation.mutate(selected.id)
   }
 
-  const handleEdit = (request: ApprovalRequest) => {
-    setSelectedRequest(request)
-    setEditModalOpen(true)
+  const handleEditSubmit = (data: Parameters<typeof updateRequest>[1]) => {
+    if (selected) updateMutation.mutate({ id: selected.id, data })
   }
 
-  const handleEditSubmit = (data: any) => {
-    if (selectedRequest) {
-      updateMutation.mutate({
-        id: selectedRequest.id,
-        data,
-      })
-    }
+  const handleScheduleSubmit = (datetime: string, deadlineDays?: number, reminders?: Reminder[]) => {
+    if (selected) scheduleMutation.mutate({ id: selected.id, datetime, deadlineDays, reminders })
   }
 
-  const handleSchedule = (request: ApprovalRequest) => {
-    setSelectedRequest(request)
-    setScheduleModalOpen(true)
-  }
+  const list = (
+    <RequestList
+      requests={requests}
+      isLoading={isLoading}
+      error={error}
+      selectedId={selectedId}
+      onSelect={selectRequest}
+      activeStatus={status}
+      onOpenNav={() => setNavOpen(true)}
+    />
+  )
 
-  const handleScheduleSubmit = (datetime: string, deadlineDays?: number, followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number }) => {
-    if (selectedRequest) {
-      scheduleMutation.mutate({
-        id: selectedRequest.id,
-        datetime,
-        deadlineDays,
-        followUpStrategy,
-      })
-    }
-  }
+  const isFirstRun = status === 'all' && !isLoading && !error && (requests?.length ?? 0) === 0
+
+  const detail = selected ? (
+    <RequestDetail
+      request={selected}
+      onClose={clearSelection}
+      onEdit={() => setEditModalOpen(true)}
+      onSchedule={() => setScheduleModalOpen(true)}
+      onSendNow={handleSendNow}
+      onDelete={handleDelete}
+    />
+  ) : isFirstRun ? (
+    <FirstRunPanel />
+  ) : (
+    <RequestDetailEmpty />
+  )
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Daily Limit Indicator */}
-        <DailyLimitIndicator />
+    <>
+      <DashboardShell
+        activeStatus={status}
+        onSelectFolder={selectFolder}
+        hasSelection={!!selected}
+        list={list}
+        detail={detail}
+        navOpen={navOpen}
+        onCloseNav={() => setNavOpen(false)}
+      />
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-heading font-semibold text-foreground">Dashboard</h1>
-          <Link href="/requests/new">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              New Request
-            </Button>
-          </Link>
-        </div>
-
-        {/* Status Filters */}
-        <RequestFilters onFilterChange={setStatusFilter} />
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-24">
-            <div className="inline-block animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
-            <p className="text-foreground/60 font-medium">Loading your requests...</p>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-            <p className="text-red-700 dark:text-red-300 font-medium">Unable to load requests</p>
-            <p className="text-red-600 dark:text-red-400 text-sm mt-1">{String(error)}</p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && !error && (!requests || requests.length === 0) && (
-          <div className="bg-white dark:bg-card rounded-lg border border-border p-12 text-center">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-secondary mb-6">
-              <Plus className="h-8 w-8 text-secondary-foreground" />
-            </div>
-            <h3 className="text-xl font-heading font-semibold text-foreground mb-2">
-              {statusFilter === 'all' ? 'No requests yet' : `No ${statusFilter} requests`}
-            </h3>
-            <p className="text-foreground/60 mb-6 max-w-sm mx-auto">
-              {statusFilter === 'all' 
-                ? "Create your first approval request to get started. It only takes a few seconds."
-                : `You don't have any ${statusFilter} requests at the moment.`
-              }
-            </p>
-            {statusFilter === 'all' && (
-              <Link href="/requests/new">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Request
-                </Button>
-              </Link>
-            )}
-          </div>
-        )}
-
-        {/* Requests Grid */}
-        {requests && requests.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {requests.map((req) => (
-              <RequestCard
-                key={req.id}
-                request={req}
-                onEdit={() => handleEdit(req)}
-                onDelete={() => handleDelete(req)}
-                onSchedule={() => handleSchedule(req)}
-                onSendNow={() => handleSendNow(req)}
-              />
-            ))}
-          </div>
-        )}
-      </main>
-
-      {/* Reschedule Modal */}
       <RescheduleModal
         open={scheduleModalOpen}
         onOpenChange={setScheduleModalOpen}
         onReschedule={handleScheduleSubmit}
-        initialDate={selectedRequest?.scheduled_send_at || undefined}
-        initialDeadline={selectedRequest?.deadline || undefined}
-        initialFollowUp={selectedRequest?.follow_up_strategy || null}
+        initialDate={selected?.scheduled_send_at || undefined}
+        initialDeadline={selected?.deadline || undefined}
+        initialReminders={null}
       />
 
-      {/* Edit Modal */}
       <EditRequestModal
-        request={selectedRequest}
+        request={selected}
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
         onSave={handleEditSubmit}
         isLoading={updateMutation.isPending}
       />
-    </div>
+    </>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-[100dvh] items-center justify-center bg-background">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      }
+    >
+      <DashboardView />
+    </Suspense>
   )
 }

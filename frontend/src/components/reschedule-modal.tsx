@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { DateTimePickerModal } from './date-time-picker-modal'
+import type { Reminder } from '@/lib/api'
 
 interface FollowUpConfig {
   beforeDeadline?: string
@@ -22,10 +23,10 @@ interface FollowUpConfig {
 interface RescheduleModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onReschedule: (datetime: string, deadlineDays?: number, followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number }) => void
+  onReschedule: (datetime: string, deadlineDays?: number, reminders?: Reminder[]) => void
   initialDate?: string | null
   initialDeadline?: string | null
-  initialFollowUp?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number } | null
+  initialReminders?: Reminder[] | null
 }
 
 function calculateDaysUntil(datetimeString: string): number {
@@ -36,13 +37,13 @@ function calculateDaysUntil(datetimeString: string): number {
   return Math.max(1, diffDays)
 }
 
-export function RescheduleModal({ 
-  open, 
-  onOpenChange, 
+export function RescheduleModal({
+  open,
+  onOpenChange,
   onReschedule,
   initialDate,
   initialDeadline,
-  initialFollowUp
+  initialReminders
 }: RescheduleModalProps) {
   const [date, setDate] = useState<Date | undefined>(
     initialDate ? new Date(initialDate) : new Date()
@@ -51,7 +52,14 @@ export function RescheduleModal({
   const [deadlineDateTime, setDeadlineDateTime] = useState<string>(
     initialDeadline || ''
   )
-  const [followUpConfig, setFollowUpConfig] = useState<FollowUpConfig>({})
+  const [followUpConfig, setFollowUpConfig] = useState<FollowUpConfig>(() => {
+    const cfg: FollowUpConfig = {}
+    for (const r of initialReminders || []) {
+      if (r.kind === 'before_deadline') cfg.beforeDeadline = r.send_at
+      else if (r.kind === 'after_sending') cfg.afterSending = r.send_at
+    }
+    return cfg
+  })
   const [showDeadlinePicker, setShowDeadlinePicker] = useState(false)
   const [showFollowUpPicker, setShowFollowUpPicker] = useState(false)
   const [addingFollowUpType, setAddingFollowUpType] = useState<'before' | 'after' | null>(null)
@@ -100,14 +108,15 @@ export function RescheduleModal({
 
     const isoString = localDate.toISOString() // Convert to UTC
     const deadlineDays = deadlineDateTime ? calculateDaysUntil(deadlineDateTime) : 3
-    
-    const followUpStrategy = (followUpConfig.beforeDeadline || followUpConfig.afterSending) ? {
-      enabled: true,
-      days_before_deadline: followUpConfig.beforeDeadline ? calculateDaysUntil(followUpConfig.beforeDeadline) : undefined,
-      days_after_sending: followUpConfig.afterSending ? calculateDaysUntil(followUpConfig.afterSending) : undefined,
-    } : { enabled: false }
 
-    onReschedule(isoString, deadlineDays, followUpStrategy)
+    // Absolute reminder times (no day rounding).
+    const reminders: Reminder[] = []
+    if (followUpConfig.beforeDeadline)
+      reminders.push({ kind: 'before_deadline', send_at: new Date(followUpConfig.beforeDeadline).toISOString() })
+    if (followUpConfig.afterSending)
+      reminders.push({ kind: 'after_sending', send_at: new Date(followUpConfig.afterSending).toISOString() })
+
+    onReschedule(isoString, deadlineDays, reminders)
     onOpenChange(false)
   }
 

@@ -64,19 +64,46 @@ def get_daily_limit_info(user_id: str) -> tuple[int, datetime, str | None]:
         return 0, tomorrow_utc, None
 
 
+def _humanize_hours(hours: float) -> str:
+    """Human-friendly duration for a positive number of hours."""
+    if hours < 1.5:
+        return "1 hour"
+    if hours < 36:
+        return f"{round(hours)} hours"
+    return f"{round(hours / 24)} days"
+
+
+def _humanize_since(delta: timedelta) -> str:
+    """Human-friendly 'ago' phrasing for an elapsed timedelta."""
+    total_hours = delta.total_seconds() / 3600
+    if total_hours < 1.5:
+        return "less than an hour"
+    if total_hours < 36:
+        return f"{round(total_hours)} hours"
+    return f"{round(total_hours / 24)} days"
+
+
 async def send_approval_email(
-    record: dict, is_followup: bool = False, followup_type: str | None = None
+    record: dict, is_followup: bool = False, reminder: dict | None = None
 ):
-    """Send approval request email via Brevo"""
+    """Send approval request email via Brevo.
+
+    When ``is_followup`` is set, ``reminder`` (a request_reminders row or the
+    get_due_reminders projection) drives the subject prefix and urgency banner,
+    which are computed dynamically from the live time window — no hardcoded
+    day values, so any reminder schedule renders correct copy.
+    """
     approve_url = (
         f"{settings.FRONTEND_URL}/action?token={record['token']}&action=approve"
     )
     reject_url = f"{settings.FRONTEND_URL}/action?token={record['token']}&action=reject"
 
     requester_display = record.get("requester_email", record["user_id"][:8])
+    # A reminder may override the body copy with its own custom message.
+    body_text = (reminder or {}).get("custom_message") or record.get("message")
     message_section = (
-        f'<p style="color: #666; font-size: 15px; line-height: 1.6; margin: 16px 0;">{record["message"]}</p>'
-        if record.get("message")
+        f'<p style="color: #666; font-size: 15px; line-height: 1.6; margin: 16px 0;">{body_text}</p>'
+        if body_text
         else ""
     )
     file_section = (
@@ -95,27 +122,55 @@ async def send_approval_email(
         )
         deadline_str = deadline_dt.strftime("%B %d, %Y at %I:%M %p UTC")
 
+    # Parse sent_at for after-sending follow-up phrasing
+    sent_dt = None
+    if record.get("sent_at"):
+        sent_dt = (
+            datetime.fromisoformat(record["sent_at"].replace("Z", "+00:00"))
+            if isinstance(record["sent_at"], str)
+            else record["sent_at"]
+        )
+
     # Tracking pixel for email opens
     tracking_pixel = f'<img src="{settings.BACKEND_URL}/track/open?token={record["token"]}" width="1" height="1" alt="" style="display:none;opacity:0;" />'
 
-    # Subject line varies for follow-ups
+    # Subject line and urgency banner are computed dynamically from the live
+    # time window so any reminder schedule renders correct copy.
     subject_prefix = ""
     urgency_banner = ""
     if is_followup:
-        if followup_type == "1_day_before":
+        kind = (reminder or {}).get("kind") or "after_sending"
+        now = datetime.now(timezone.utc)
+
+        if kind == "before_deadline":
             subject_prefix = "[Reminder] "
-            urgency_banner = f"""
-            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
-                <p style="color: #92400e; margin: 0; font-size: 14px; font-weight: 600;">⏰ Reminder: Response needed within 24 hours</p>
-                <p style="color: #92400e; margin: 4px 0 0 0; font-size: 13px;">This request expires on {deadline_str}</p>
-            </div>
-            """
-        elif followup_type == "2_days_after":
+            headline = "Reminder: your response is needed"
+            if deadline_str and deadline_dt:
+                hours_left = (deadline_dt - now).total_seconds() / 3600
+                if hours_left > 0:
+                    headline = (
+                        f"Reminder: response needed within {_humanize_hours(hours_left)}"
+                    )
+            detail = (
+                f"This request expires on {deadline_str}"
+                if deadline_str
+                else "Please respond soon"
+            )
+        else:  # after_sending / absolute
             subject_prefix = "[Follow-up] "
-            urgency_banner = f"""
+            headline = "Follow-up: this request is awaiting your response"
+            detail = ""
+            if sent_dt:
+                detail = f"Sent {_humanize_since(now - sent_dt)} ago"
+            if deadline_str:
+                detail = (detail + " • " if detail else "") + f"Expires on {deadline_str}"
+            if not detail:
+                detail = "Awaiting your response"
+
+        urgency_banner = f"""
             <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
-                <p style="color: #92400e; margin: 0; font-size: 14px; font-weight: 600;">⏰ Follow-up: This request is awaiting your response</p>
-                <p style="color: #92400e; margin: 4px 0 0 0; font-size: 13px;">Sent 2 days ago • Expires on {deadline_str}</p>
+                <p style="color: #92400e; margin: 0; font-size: 14px; font-weight: 600;">⏰ {headline}</p>
+                <p style="color: #92400e; margin: 4px 0 0 0; font-size: 13px;">{detail}</p>
             </div>
             """
 
@@ -255,6 +310,13 @@ class ApprovalRequestService:
         # Insert into database
         created = repository.create(record)
 
+        # Persist reminders. They only fire once the parent request is pending
+        # (get_due_reminders joins on approval_requests.status = 'pending').
+        if request.reminders:
+            repository.create_reminders(
+                req_id, [r.model_dump() for r in request.reminders]
+            )
+
         # Send email only if sending immediately
         if status == "pending":
             try:
@@ -330,6 +392,8 @@ class ApprovalRequestService:
             )
             raise HTTPException(403, "Only drafts can be scheduled")
 
+        now = datetime.now(timezone.utc)
+
         # Parse scheduled time (expects UTC ISO string from frontend)
         try:
             logger.info(f"Parsing scheduled_send_at: {data.get('scheduled_send_at')}")
@@ -348,7 +412,6 @@ class ApprovalRequestService:
             )
             raise HTTPException(400, f"Invalid datetime format: {str(e)}")
 
-        now = datetime.now(timezone.utc)
         if scheduled_dt <= now:
             logger.error(
                 f"scheduled_dt {scheduled_dt} is not in the future (now: {now})"
@@ -372,6 +435,11 @@ class ApprovalRequestService:
 
         updated = repository.update(request_id, update_data)
         logger.info(f"Updated request: {updated}")
+
+        # Replace reminders for this request (cancel old pending, insert new).
+        if data.get("reminders") is not None:
+            repository.cancel_pending_reminders(request_id)
+            repository.create_reminders(request_id, data["reminders"])
 
         # Send notification using stored requester email
         requester_email = req.get("requester_email")
@@ -742,49 +810,61 @@ class ApprovalRequestService:
                 except Exception as e:
                     logger.error(f"Failed to send ignored notification: {e}")
 
-        # 2. Send before-deadline follow-ups
-        before_deadline_followups = (
-            repository.get_requests_due_for_followup_before_deadline()
-        )
-        for req in before_deadline_followups:
+        # 2. Send any reminders that are now due (reminder model). The status
+        #    flag on each row dedups; get_due_reminders only returns reminders
+        #    whose parent request is still pending.
+        for rem in repository.get_due_reminders():
             try:
-                days_before = req.get("days_before", 1)
-                await send_approval_email(
-                    req,
-                    is_followup=True,
-                    followup_type=f"{days_before}_day_before_deadline",
-                )
-                # Record the follow-up event
-                repository.add_email_event(req["id"], "followup_before_deadline")
+                req = repository.get_by_id(rem["request_id"])
+                if not req or req["status"] != "pending":
+                    # Parent resolved/ignored since the row was queued; retire it.
+                    repository.mark_reminder_sent(rem["reminder_id"])
+                    continue
+                await send_approval_email(req, is_followup=True, reminder=rem)
+                repository.mark_reminder_sent(rem["reminder_id"])
                 results["followups_sent"] += 1
                 logger.info(
-                    f"Sent {days_before}-day-before follow-up for request {req['id']}"
+                    f"Sent {rem.get('kind')} reminder for request {rem['request_id']}"
                 )
             except Exception as e:
-                logger.error(f"Failed to send before-deadline follow-up: {e}")
-
-        # 3. Send after-sending follow-ups
-        after_sending_followups = (
-            repository.get_requests_due_for_followup_after_sending()
-        )
-        for req in after_sending_followups:
-            try:
-                days_after = req.get("days_after", 2)
-                await send_approval_email(
-                    req,
-                    is_followup=True,
-                    followup_type=f"{days_after}_days_after_sending",
+                logger.error(
+                    f"Failed to send reminder {rem.get('reminder_id')}: {e}"
                 )
-                # Record the follow-up event
-                repository.add_email_event(req["id"], "followup_after_sending")
-                results["followups_sent"] += 1
-                logger.info(
-                    f"Sent {days_after}-days-after follow-up for request {req['id']}"
-                )
-            except Exception as e:
-                logger.error(f"Failed to send after-sending follow-up: {e}")
 
         return results
+
+    @staticmethod
+    async def send_reminder(
+        reminder_id: str, authorization: str | None = None
+    ) -> dict:
+        """Send a single reminder by id. Called by the Edge Function per due row."""
+        expected = f"Bearer {settings.CRON_SECRET or ''}"
+        if authorization != expected:
+            raise HTTPException(401, "Unauthorized")
+
+        reminder = repository.get_reminder(reminder_id)
+        if not reminder:
+            raise HTTPException(404, "Reminder not found")
+        if reminder["status"] != "pending":
+            return {"skipped": "reminder not pending"}
+
+        req = repository.get_by_id(reminder["request_id"])
+        if not req or req["status"] != "pending":
+            # Parent resolved/ignored; retire the reminder so it never re-fires.
+            repository.mark_reminder_sent(reminder_id)
+            return {"skipped": "parent not pending"}
+
+        try:
+            await send_approval_email(req, is_followup=True, reminder=reminder)
+            repository.mark_reminder_sent(reminder_id)
+            logger.info(
+                f"Sent {reminder.get('kind')} reminder {reminder_id} "
+                f"for request {reminder['request_id']}"
+            )
+            return {"success": True}
+        except Exception as e:
+            logger.error(f"Failed to send reminder {reminder_id}: {e}")
+            raise HTTPException(500, str(e))
 
 
 # Singleton instance

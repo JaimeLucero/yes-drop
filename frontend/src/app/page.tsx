@@ -4,194 +4,228 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/supabase'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle, Zap, Shield, BarChart3, Mail, Upload } from 'lucide-react'
+import { ArrowRight, Play, Zap, Send, CalendarClock, BellRing, Inbox } from 'lucide-react'
 import { Footer } from '@/components/footer'
+import { StatStrip } from '@/components/landing/stat-strip'
+import { StatsSection } from '@/components/landing/stats-section'
+import { FlowDemo } from '@/components/landing/flow-demo'
+import { HowItWorks } from '@/components/landing/how-it-works'
+import { UseCases } from '@/components/landing/use-cases'
+import { Faq } from '@/components/landing/faq'
+import { DemoWalkthroughModal } from '@/components/demo-walkthrough-modal'
+
+const SIGNUP_HREF = '/login?mode=signup'
 
 export default function LandingPage() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [demoOpen, setDemoOpen] = useState(false)
 
+  // Render the landing immediately; only send already-signed-in users onward.
+  // (Gating the whole page behind a loading flag wedged the back button when
+  // returning to a hashed URL like /#how-it-works.)
   useEffect(() => {
-    const checkAuth = async () => {
-      const user = await getCurrentUser()
-      setIsAuthenticated(!!user)
-      if (user) {
-        router.push('/dashboard')
-      } else {
-        setIsLoading(false)
-      }
-    }
-    checkAuth()
-
-    // Check system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      document.documentElement.classList.add('dark')
-    }
+    getCurrentUser().then((user) => {
+      if (user) router.replace('/dashboard')
+    })
   }, [router])
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center">
-          <div className="inline-block animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="bg-background text-foreground">
-      {/* Hero Section */}
-      <section className="min-h-screen pt-20 pb-32 relative overflow-hidden flex items-center">
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-accent/20 to-transparent rounded-full blur-3xl"></div>
+      {/* Hero */}
+      <section className="relative flex min-h-screen items-center overflow-hidden pt-20 pb-24">
+        {/* Ambient backdrop */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="animate-aurora-drift absolute -left-24 -top-24 h-[34rem] w-[34rem] rounded-full bg-primary/15 blur-3xl" />
+          <div
+            className="animate-aurora-drift absolute right-[-6rem] top-10 h-[28rem] w-[28rem] rounded-full bg-sky-400/15 blur-3xl"
+            style={{ animationDelay: '-8s' }}
+          />
+          <svg
+            className="absolute inset-0 h-full w-full text-foreground"
+            style={{
+              maskImage: 'radial-gradient(ellipse 70% 60% at 60% 30%, black 25%, transparent 80%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 70% 60% at 60% 30%, black 25%, transparent 80%)',
+            }}
+          >
+            <defs>
+              <pattern id="hero-dots" width="26" height="26" patternUnits="userSpaceOnUse">
+                <circle cx="1.4" cy="1.4" r="1.4" fill="currentColor" opacity="0.06" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#hero-dots)" />
+          </svg>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Center: Content */}
-            <div className="space-y-8 flex flex-col items-center lg:items-start text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full w-fit">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-6">
+          <div className="grid items-center gap-16 lg:grid-cols-2">
+            <div className="flex flex-col items-center space-y-8 text-center lg:items-start lg:text-left">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2">
                 <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">Fast, simple, and reliable</span>
+                <span className="text-sm font-medium text-primary">Email approvals on autopilot</span>
               </div>
 
               <div className="space-y-4">
-                <h1 className="text-5xl lg:text-6xl font-heading font-bold leading-tight">
-                  Approval requests{' '}
-                  <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                    made simple
-                  </span>
+                <h1 className="text-4xl font-heading font-semibold leading-tight tracking-tight lg:text-[3.4rem]">
+                  Approvals that don&apos;t need <span className="text-primary">chasing</span>
                 </h1>
-                <p className="text-xl text-foreground/70 leading-relaxed max-w-lg">
-                  Send approval requests in seconds, get responses instantly, and never miss an update. The easiest way to manage approvals across your organization.
+                <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
+                  Send an approval request by email, set a deadline, and let automatic reminders chase the
+                  reply — every response tracked in one place.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link href="/login">
-                  <button className="group px-8 py-3.5 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all flex items-center gap-2 w-full sm:w-auto justify-center">
-                    Get Started Free
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
+              <div className="flex w-full flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+                <Link
+                  href={SIGNUP_HREF}
+                  className="group inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-7 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
+                >
+                  Start for free
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <button className="px-8 py-3.5 bg-secondary text-secondary-foreground font-semibold rounded-xl border border-border hover:bg-secondary/80 transition-colors w-full sm:w-auto">
-                  Watch Demo
+                <button
+                  onClick={() => setDemoOpen(true)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-7 py-3 font-medium text-foreground transition-colors hover:bg-muted sm:w-auto"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  See how it works
                 </button>
               </div>
 
+              <div className="flex w-full justify-center border-t border-border pt-6 lg:justify-start">
+                <StatStrip />
+              </div>
             </div>
 
-            {/* Right: Visual showcase */}
-            <div className="relative h-full min-h-[500px] hidden lg:flex items-center justify-center">
-              <div className="relative w-full h-full">
-                {/* Floating card 1 */}
-                <div className="absolute top-0 right-0 w-80 bg-white dark:bg-card rounded-2xl shadow-2xl p-6 border border-border transform hover:translate-y-2 transition-transform duration-300">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="h-3 w-3 rounded-full bg-amber-500"></div>
-                    <span className="text-sm font-medium text-foreground/60">Pending</span>
-                  </div>
-                  <h3 className="font-heading font-semibold text-foreground mb-2">Budget Approval Q3</h3>
-                  <p className="text-sm text-foreground/60 mb-4">Awaiting approval from CEO</p>
-                  <div className="text-xs text-foreground/50">2 hours ago</div>
-                </div>
-
-                {/* Floating card 2 */}
-                <div className="absolute bottom-20 left-0 w-80 bg-white dark:bg-card rounded-2xl shadow-2xl p-6 border border-border transform hover:-translate-y-2 transition-transform duration-300">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="h-3 w-3 rounded-full bg-emerald-500"></div>
-                    <span className="text-sm font-medium text-foreground/60">Approved</span>
-                  </div>
-                  <h3 className="font-heading font-semibold text-foreground mb-2">Contract Review</h3>
-                  <p className="text-sm text-foreground/60 mb-4">Approved by Legal Team</p>
-                  <div className="text-xs text-foreground/50">5 minutes ago</div>
-                </div>
+            <div className="relative mt-4 flex justify-center lg:mt-0">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
+              />
+              <div className="relative w-full max-w-md">
+                <FlowDemo />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-24 bg-white dark:bg-card/50 border-t border-border">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-heading font-bold mb-6">
-              Everything you need
+      {/* How it works */}
+      <HowItWorks />
+
+      {/* Features */}
+      <section id="features" className="border-t border-border bg-card/40 py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mb-14 text-center">
+            <h2 className="mb-3 text-3xl font-heading font-semibold tracking-tight lg:text-4xl">
+              From request to decision — automatically
             </h2>
-            <p className="text-xl text-foreground/70 max-w-2xl mx-auto">
-              Powerful features designed to make approval workflows effortless
+            <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+              YesDrop runs the whole approval loop, so you stop chasing replies and start closing them.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid gap-5 md:grid-cols-2">
             {[
               {
-                icon: Zap,
-                title: 'Lightning Fast',
-                description: 'Send approval requests in seconds and track responses in real-time with automatic email notifications',
+                icon: Send,
+                title: 'Send approvals by email',
+                description:
+                  'Send a request and your approver decides in one click, right from their inbox — no account, no app to install.',
               },
               {
-                icon: Shield,
-                title: 'Secure & Reliable',
-                description: 'Enterprise-grade security with OAuth 2.0 authentication and encrypted data at rest',
+                icon: CalendarClock,
+                title: 'Deadlines that enforce themselves',
+                description:
+                  'Set a respond-by date. Unanswered requests are marked ignored when it passes, so nothing stays open forever.',
               },
               {
-                icon: BarChart3,
-                title: 'Full Visibility',
-                description: 'Beautiful dashboard with status tracking, analytics, and activity history for all requests',
+                icon: BellRing,
+                title: 'Reminders on autopilot',
+                description:
+                  'Schedule follow-ups and YesDrop nudges non-responders for you. You never send another “just checking in.”',
               },
               {
-                icon: Mail,
-                title: 'Smart Notifications',
-                description: 'Intelligent email system with clickable approval/rejection links — no sign-in required',
+                icon: Inbox,
+                title: 'One inbox for every approval',
+                description:
+                  'Track status, history, attachments, and reminders for every request in a single dashboard.',
               },
-              {
-                icon: Upload,
-                title: 'File Support',
-                description: 'Attach any file or document to requests for complete context and easy collaboration',
-              },
-              {
-                icon: CheckCircle,
-                title: 'Audit Trail',
-                description: 'Complete history of all approvals and rejections for compliance and accountability',
-              },
-            ].map((feature, i) => (
-              <div key={i} className="p-8 bg-background rounded-xl border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300 group">
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
-                  <feature.icon className="h-6 w-6 text-primary" />
+            ].map((feature) => (
+              <div
+                key={feature.title}
+                className="flex gap-4 rounded-xl border border-border bg-background p-6 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <feature.icon className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="text-xl font-heading font-semibold mb-3 text-foreground">{feature.title}</h3>
-                <p className="text-foreground/70 leading-relaxed">{feature.description}</p>
+                <div>
+                  <h3 className="mb-1.5 font-heading text-lg font-semibold text-foreground">{feature.title}</h3>
+                  <p className="leading-relaxed text-muted-foreground">{feature.description}</p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 pointer-events-none"></div>
-        <div className="max-w-4xl mx-auto px-6 relative z-10 text-center">
-          <h2 className="text-4xl lg:text-5xl font-heading font-bold mb-6">
-            Ready to simplify approvals?
-          </h2>
-          <p className="text-lg text-foreground/70 mb-8 max-w-2xl mx-auto">
-            Join hundreds of teams managing approvals with YesDrop. Get started in minutes, no credit card required.
-          </p>
-          <Link href="/login">
-            <button className="group px-10 py-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all inline-flex items-center gap-2">
-              Get Started Free
-              <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </Link>
+      {/* Use cases */}
+      <UseCases />
+
+      {/* Data-driven stats */}
+      <StatsSection />
+
+      {/* FAQ */}
+      <Faq />
+
+      {/* CTA */}
+      <section className="pb-24">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="relative overflow-hidden rounded-3xl bg-primary px-8 py-16 text-center text-primary-foreground shadow-xl shadow-primary/20">
+            {/* depth */}
+            <div aria-hidden className="pointer-events-none absolute inset-0">
+              <div className="animate-aurora-drift absolute -left-20 -top-24 h-72 w-72 rounded-full bg-sky-400/25 blur-3xl" />
+              <div
+                className="animate-aurora-drift absolute -bottom-28 right-[-3rem] h-80 w-80 rounded-full bg-indigo-300/20 blur-3xl"
+                style={{ animationDelay: '-7s' }}
+              />
+              <svg
+                className="absolute inset-0 h-full w-full text-primary-foreground"
+                style={{
+                  maskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 75%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 75%)',
+                }}
+              >
+                <defs>
+                  <pattern id="cta-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+                    <circle cx="1.4" cy="1.4" r="1.4" fill="currentColor" opacity="0.1" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#cta-dots)" />
+              </svg>
+            </div>
+
+            <div className="relative z-10">
+              <h2 className="mb-4 text-3xl font-heading font-semibold tracking-tight lg:text-4xl">
+                Ready to stop chasing approvals?
+              </h2>
+              <p className="mx-auto mb-8 max-w-2xl text-lg text-primary-foreground/80">
+                Send your first request in minutes. No credit card required.
+              </p>
+              <Link
+                href={SIGNUP_HREF}
+                className="group inline-flex items-center gap-2 rounded-lg bg-background px-8 py-3.5 font-medium text-foreground shadow-lg transition-transform hover:-translate-y-0.5"
+              >
+                Start for free
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
       <Footer />
+
+      <DemoWalkthroughModal open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   )
 }

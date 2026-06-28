@@ -28,12 +28,58 @@ export interface ApprovalRequest {
   updated_at: string
 }
 
+export interface Reminder {
+  kind: 'before_deadline' | 'after_sending' | 'absolute'
+  send_at: string // absolute UTC ISO timestamp
+  custom_message?: string
+}
+
 export interface DailyLimit {
   used: number
   limit: number
   remaining: number
   resets_at: string
   next_available_date: string | null
+}
+
+export interface PublicStats {
+  total_sent: number
+  total_approved: number
+  total_rejected: number
+  approval_rate: number | null
+  avg_response_hours: number | null
+  active_users: number
+}
+
+export interface MyStats {
+  total: number
+  by_status: Record<string, number>
+  sent: number
+  pending: number
+  approved: number
+  approval_rate: number | null
+  avg_response_hours: number | null
+  volume_30d: { date: string; count: number }[]
+}
+
+export async function getPublicStats(): Promise<PublicStats> {
+  const response = await fetch(`${BACKEND_URL}/api/stats`)
+  if (!response.ok) throw new Error('Failed to fetch public stats')
+  return response.json()
+}
+
+export async function getMyStats(): Promise<MyStats> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) throw new Error('Not authenticated')
+
+  const response = await fetch(`${BACKEND_URL}/api/stats/me`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+
+  if (!response.ok) throw new Error('Failed to fetch user stats')
+  return response.json()
 }
 
 export async function getDailyLimit(): Promise<DailyLimit> {
@@ -74,11 +120,7 @@ export async function createRequest(data: {
   file_url?: string
   scheduled_send_at?: string
   deadline_days?: number
-  follow_up_strategy?: {
-    enabled: boolean
-    days_before_deadline?: number
-    days_after_sending?: number
-  }
+  reminders?: Reminder[]
 }): Promise<ApprovalRequest> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -133,16 +175,16 @@ export async function createDraft(data: {
 export async function scheduleRequest(
   requestId: string,
   scheduledSendAt: string,
-  followUpStrategy?: { enabled: boolean; days_before_deadline?: number; days_after_sending?: number },
+  reminders?: Reminder[],
   deadlineDays?: number
 ): Promise<ApprovalRequest> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
-  
+
   if (!session) throw new Error('Not authenticated')
 
   const body: any = { scheduled_send_at: scheduledSendAt }
-  if (followUpStrategy !== undefined) body.follow_up_strategy = followUpStrategy
+  if (reminders !== undefined) body.reminders = reminders
   if (deadlineDays !== undefined) body.deadline_days = deadlineDays
 
   const response = await fetch(`${BACKEND_URL}/api/requests/${requestId}/schedule`, {

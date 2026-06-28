@@ -77,20 +77,22 @@ serve(async (req) => {
       }
     }
 
-    // 2. Send before-deadline follow-ups
-    const { data: beforeDeadlineFollowups, error: beforeError } = await supabase
-      .rpc('get_requests_due_for_followup_before_deadline')
-    
-    if (beforeError) {
-      console.error('Error getting before-deadline followups:', beforeError)
+    // 2. Send any reminders that are now due. One backend call per reminder;
+    //    the backend marks each reminder 'sent' (dedup) and renders the correct
+    //    subject/banner from the live time window.
+    const { data: dueReminders, error: remindersError } = await supabase
+      .rpc('get_due_reminders')
+
+    if (remindersError) {
+      console.error('Error getting due reminders:', remindersError)
     }
 
-    let beforeCount = 0
-    for (const request of beforeDeadlineFollowups || []) {
-      const backendUrl = Deno.env.get('BACKEND_URL')
+    const backendUrl = Deno.env.get('BACKEND_URL')
+    let reminderCount = 0
+    for (const reminder of dueReminders || []) {
       if (!backendUrl) {
         console.error('BACKEND_URL not configured')
-        continue
+        break
       }
 
       const response = await fetch(`${backendUrl}/api/internal/send-followup`, {
@@ -99,62 +101,20 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${cronSecret}`,
         },
-        body: JSON.stringify({
-          request_id: request.id,
-          followup_type: 'before_deadline',
-          days_before: request.days_before,
-        }),
+        body: JSON.stringify({ reminder_id: reminder.reminder_id }),
       })
 
       if (response.ok) {
-        beforeCount++
-        console.log(`[UTC] Sent before-deadline follow-up for request ${request.id}`)
+        reminderCount++
+        console.log(`[UTC] Sent ${reminder.kind} reminder ${reminder.reminder_id}`)
       } else {
-        console.error(`Failed to send before-deadline follow-up for ${request.id}`)
+        console.error(`Failed to send reminder ${reminder.reminder_id}`)
       }
     }
 
-    // 3. Send after-sending follow-ups
-    const { data: afterSendingFollowups, error: afterError } = await supabase
-      .rpc('get_requests_due_for_followup_after_sending')
-    
-    if (afterError) {
-      console.error('Error getting after-sending followups:', afterError)
-    }
-
-    let afterCount = 0
-    for (const request of afterSendingFollowups || []) {
-      const backendUrl = Deno.env.get('BACKEND_URL')
-      if (!backendUrl) {
-        console.error('BACKEND_URL not configured')
-        continue
-      }
-
-      const response = await fetch(`${backendUrl}/api/internal/send-followup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${cronSecret}`,
-        },
-        body: JSON.stringify({
-          request_id: request.id,
-          followup_type: 'after_sending',
-          days_after: request.days_after,
-        }),
-      })
-
-      if (response.ok) {
-        afterCount++
-        console.log(`[UTC] Sent after-sending follow-up for request ${request.id}`)
-      } else {
-        console.error(`Failed to send after-sending follow-up for ${request.id}`)
-      }
-    }
-
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       ignored: ignoredCount,
-      followups_before: beforeCount,
-      followups_after: afterCount,
+      reminders_sent: reminderCount,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
