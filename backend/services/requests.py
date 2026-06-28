@@ -668,6 +668,9 @@ class ApprovalRequestService:
             req["id"], {"status": new_status, "updated_at": now.isoformat()}
         )
 
+        # Stop any pending follow-up reminders now that a decision was made.
+        repository.cancel_pending_reminders(req["id"])
+
         # Store feedback if provided
         if feedback:
             repository.add_feedback(
