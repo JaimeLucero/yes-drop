@@ -74,7 +74,8 @@ function DashboardView() {
   const { data: requests, isLoading, error } = useQuery({
     queryKey: ['requests', status],
     queryFn: () => fetchRequests(status === 'all' ? undefined : status),
-    refetchInterval: 5000,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   })
 
   const selected = requests?.find((r) => r.id === selectedId) ?? null
