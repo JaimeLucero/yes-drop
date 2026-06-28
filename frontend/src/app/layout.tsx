@@ -31,6 +31,9 @@ export const metadata: Metadata = {
   title: "YesDrop — email approvals on autopilot",
   description:
     "Send approval requests by email, set deadlines, and let automatic reminders chase the reply. Track every response in one place.",
+  verification: {
+    google: "6RSi-HY3Dp1Ntaa1wDuRs1N2g1vT7RNTsCdu7dfry08",
+  },
 };
 
 export default function RootLayout({
