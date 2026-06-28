@@ -12,6 +12,7 @@ import {
   Eye,
   ExternalLink,
   Bell,
+  FileCheck2,
 } from 'lucide-react'
 import type { ApprovalRequest } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -145,6 +146,22 @@ export function RequestDetail({ request, onClose, onEdit, onSchedule, onSendNow,
                 </li>
               ))}
             </ul>
+          </Field>
+        )}
+
+        {request.response_file_url && (
+          <Field label="Signed document">
+            <a
+              href={request.response_file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-medium text-primary hover:underline"
+            >
+              <FileCheck2 className="h-4 w-4" /> Download signed copy
+            </a>
+            {request.signer_name && (
+              <span className="ml-2 text-xs text-muted-foreground">by {request.signer_name}</span>
+            )}
           </Field>
         )}
 

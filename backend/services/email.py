@@ -80,10 +80,21 @@ class EmailService:
         old_status: str,
         new_status: str,
         scheduled_time: str | None = None,
+        response_file_url: str | None = None,
     ) -> bool:
         """Send status change notification to requester"""
         if not settings.BREVO_API_KEY:
             return False
+
+        # Link to the receiver's signed/edited copy, if any.
+        signed_doc_html = (
+            f'<p style="margin: 16px 0;"><a href="{response_file_url}" '
+            'style="display:inline-block; background:#33436a; color:#fff; padding:10px 18px; '
+            'text-decoration:none; border-radius:6px; font-weight:600; font-size:14px;">'
+            '📄 Download signed document</a></p>'
+            if response_file_url
+            else ""
+        )
 
         sender = SendTransacEmailRequestSender(
             name="YesDrop",
@@ -131,6 +142,7 @@ class EmailService:
                 <html><body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #22c55e;">Request Approved!</h2>
                     <p>Great news! Your request "<strong>{request_title}</strong>" was approved.</p>
+                    {signed_doc_html}
                 </body></html>
                 """,
             },

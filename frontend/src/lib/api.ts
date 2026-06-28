@@ -25,8 +25,44 @@ export interface ApprovalRequest {
     days_after_sending?: number
   } | null
   reminders?: Reminder[]
+  response_file_url?: string | null
+  response_signed_at?: string | null
+  signer_name?: string | null
   created_at: string
   updated_at: string
+}
+
+export interface PublicRequest {
+  title: string | null
+  message: string | null
+  file_url: string | null
+  status: string
+}
+
+/** Public (token-only) request info for the receiver action page. */
+export async function getPublicRequest(token: string): Promise<PublicRequest> {
+  const response = await fetch(`${BACKEND_URL}/api/public/requests/${token}`)
+  if (!response.ok) throw new Error('Request not found')
+  return response.json()
+}
+
+/** Receiver uploads a signed/edited copy of the attached document (public, token). */
+export async function uploadResponseDocument(
+  token: string,
+  blob: Blob,
+  signerName?: string
+): Promise<{ response_file_url: string }> {
+  const form = new FormData()
+  form.append('file', blob, 'signed.pdf')
+  const url = new URL(`${BACKEND_URL}/action/response-document`)
+  url.searchParams.set('token', token)
+  if (signerName) url.searchParams.set('signer_name', signerName)
+  const response = await fetch(url.toString(), { method: 'POST', body: form })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail || 'Could not upload the signed document')
+  }
+  return response.json()
 }
 
 export interface Reminder {

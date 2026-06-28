@@ -3,6 +3,7 @@ Supabase database client and repository for approval requests.
 """
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from supabase import create_client, Client
 from core.config import settings
@@ -79,6 +80,9 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         deadline_days=record.get("deadline_days"),
         follow_up_strategy=record.get("follow_up_strategy"),
         reminders=reminders,
+        response_file_url=record.get("response_file_url"),
+        response_signed_at=record.get("response_signed_at"),
+        signer_name=record.get("signer_name"),
         created_at=record["created_at"],
         updated_at=record["updated_at"],
     )
@@ -92,6 +96,15 @@ class ApprovalRequestRepository:
         """Create a new approval request"""
         result = supabase.table("approval_requests").insert(record).execute()
         return result.data[0]
+
+    @staticmethod
+    def upload_response_file(file_bytes: bytes, content_type: str = "application/pdf") -> str:
+        """Upload a receiver's signed copy to the public approval-files bucket (service role)."""
+        path = f"signed/{uuid.uuid4()}.pdf"
+        supabase.storage.from_("approval-files").upload(
+            path, file_bytes, {"content-type": content_type, "upsert": "false"}
+        )
+        return supabase.storage.from_("approval-files").get_public_url(path)
 
     @staticmethod
     def get_by_id(request_id: str) -> dict | None:

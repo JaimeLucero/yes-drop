@@ -9,7 +9,7 @@ import asyncio
 import time
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Header, Depends, Query, Request, HTTPException
+from fastapi import FastAPI, Header, Depends, Query, Request, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -31,6 +31,7 @@ from models.schemas import (
     GoogleStatusResponse,
     ReminderPlanRequest,
     ReminderPlanResponse,
+    PublicRequest,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -192,6 +193,27 @@ async def public_stats():
 async def my_stats(user_id: str = Depends(get_current_user)):
     """Per-user stats for the authenticated dashboard analytics band."""
     return repository.get_user_stats(user_id)
+
+
+@app.get("/api/public/requests/{token}", response_model=PublicRequest)
+async def public_request(token: str):
+    """Minimal request info for the unauthenticated action page (by token)."""
+    return service.get_public_request(token)
+
+
+@app.post("/action/response-document")
+async def upload_response_document(
+    token: str = Query(...),
+    file: UploadFile = File(...),
+    signer_name: str | None = Query(None),
+):
+    """Receiver uploads a signed/edited copy of the attached document (public, token)."""
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(400, "File too large (max 10MB)")
+    return service.store_response_document(
+        token, content, file.content_type or "application/pdf", signer_name
+    )
 
 
 @app.get("/action")

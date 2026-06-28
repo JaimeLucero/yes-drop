@@ -647,6 +647,43 @@ class ApprovalRequestService:
         )
 
     @staticmethod
+    def get_public_request(token: str) -> dict:
+        """Minimal request info for the unauthenticated action page."""
+        req = repository.get_by_token(token)
+        if not req:
+            raise HTTPException(404, "Invalid token")
+        return {
+            "title": req.get("title"),
+            "message": req.get("message"),
+            "file_url": req.get("file_url"),
+            "status": req["status"],
+        }
+
+    @staticmethod
+    def store_response_document(
+        token: str,
+        file_bytes: bytes,
+        content_type: str = "application/pdf",
+        signer_name: str | None = None,
+    ) -> dict:
+        """Store the receiver's signed/edited copy against a pending request."""
+        req = repository.get_by_token(token)
+        if not req:
+            raise HTTPException(404, "Invalid token")
+        if req["status"] != "pending":
+            raise HTTPException(400, "This request is no longer open")
+        url = repository.upload_response_file(file_bytes, content_type)
+        repository.update(
+            req["id"],
+            {
+                "response_file_url": url,
+                "response_signed_at": datetime.now(timezone.utc).isoformat(),
+                "signer_name": signer_name,
+            },
+        )
+        return {"response_file_url": url}
+
+    @staticmethod
     async def process_action(
         token: str, action: str, feedback: str | None = None
     ) -> tuple[str, str]:
@@ -687,6 +724,7 @@ class ApprovalRequestService:
                 request_title=req["title"] or "Untitled",
                 old_status=old_status,
                 new_status=new_status,
+                response_file_url=req.get("response_file_url"),
             )
 
         # Generate HTML response

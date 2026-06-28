@@ -2,28 +2,38 @@
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { CheckCircle, XCircle, Loader2, PenLine, FileCheck2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/brand-logo'
+import { getPublicRequest, type PublicRequest } from '@/lib/api'
+
+const DocumentEditor = dynamic(() => import('@/components/document-editor/document-editor'), { ssr: false })
 
 export default function ActionContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const token = searchParams.get('token')
   const action = searchParams.get('action')
-  const [status, setStatus] = useState<'form' | 'loading' | 'success' | 'error'>('form')
-  const [message, setMessage] = useState('')
+  const invalidLink = !token || !action || !['approve', 'reject'].includes(action)
+  const [status, setStatus] = useState<'form' | 'loading' | 'success' | 'error'>(
+    invalidLink ? 'error' : 'form'
+  )
+  const [message, setMessage] = useState(
+    invalidLink ? 'This link is invalid or has expired. Ask the requester to resend it.' : ''
+  )
   const [feedback, setFeedback] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [req, setReq] = useState<PublicRequest | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [signedUrl, setSignedUrl] = useState<string | null>(null)
 
   const isApprove = action === 'approve'
+  const isPdf = !!req?.file_url && /\.pdf($|\?)/i.test(req.file_url)
 
   useEffect(() => {
-    if (!token || !action || !['approve', 'reject'].includes(action)) {
-      setStatus('error')
-      setMessage("This link is invalid or has expired. Ask the requester to resend it.")
-    }
-  }, [token, action])
+    if (token) getPublicRequest(token).then(setReq).catch(() => {})
+  }, [token])
 
   const handleSubmit = async () => {
     if (!token) return
@@ -76,6 +86,29 @@ export default function ActionContent() {
                   : 'Let the requester know why so they can follow up.'}
               </p>
             </div>
+
+            {isApprove && isPdf && (
+              <div className="rounded-lg border border-border bg-secondary/40 p-3">
+                <div className="flex items-center gap-2">
+                  <PenLine className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Sign or edit the document</span>
+                  <span className="text-xs text-muted-foreground">(optional)</span>
+                </div>
+                {signedUrl ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+                    <FileCheck2 className="h-4 w-4" /> Signed copy attached
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditorOpen(true)}
+                    className="mt-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    Open editor
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
@@ -135,6 +168,18 @@ export default function ActionContent() {
           </div>
         )}
       </div>
+
+      {editorOpen && token && req?.file_url && (
+        <DocumentEditor
+          fileUrl={req.file_url}
+          token={token}
+          onAttached={(url) => {
+            setSignedUrl(url)
+            setEditorOpen(false)
+          }}
+          onClose={() => setEditorOpen(false)}
+        />
+      )}
     </div>
   )
 }

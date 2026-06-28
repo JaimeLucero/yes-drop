@@ -117,8 +117,20 @@ class ApprovalRequestResponse(BaseModel):
     deadline_days: int | None
     follow_up_strategy: dict | None
     reminders: list[ReminderInput] = []
+    response_file_url: str | None = None  # Receiver's signed/edited copy
+    response_signed_at: datetime | None = None
+    signer_name: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class PublicRequest(BaseModel):
+    """Minimal request info exposed to the unauthenticated action page (by token)."""
+
+    title: str | None = None
+    message: str | None = None
+    file_url: str | None = None
+    status: str
 
 
 class DailyLimitResponse(BaseModel):
