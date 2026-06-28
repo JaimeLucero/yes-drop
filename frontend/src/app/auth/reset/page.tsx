@@ -26,6 +26,16 @@ function ResetInner() {
   useEffect(() => {
     const run = async () => {
       const supabase = createClient()
+      // Session-first: the recovery /verify redirect may already have signed the
+      // user in. Don't re-verify a one-time token (that 403s and wedges).
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (session) {
+        setPhase('form')
+        return
+      }
+
       const token_hash = params.get('token_hash')
       const type = (params.get('type') || 'recovery') as EmailOtpType
       if (token_hash) {
@@ -38,15 +48,9 @@ function ResetInner() {
         setPhase('form')
         return
       }
-      // Fallback: implicit flow may have already set a session from the URL.
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (session) setPhase('form')
-      else {
-        setError('This reset link is invalid or has expired.')
-        setPhase('error')
-      }
+
+      setError('This reset link is invalid or has expired.')
+      setPhase('error')
     }
     run()
   }, [params])
