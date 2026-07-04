@@ -42,5 +42,22 @@ class Settings:
     OPENCODE_MODEL: str = os.getenv("OPENCODE_MODEL", "deepseek-v4-flash-free")
     OPENCODE_BASE_URL: str = os.getenv("OPENCODE_BASE_URL", "https://opencode.ai/zen/v1")
 
+    # Gemini (compose an entire approval automation from a prompt). REST API.
+    # GEMINI_KEY is the legacy env name already present in .env; GEMINI_API_KEY
+    # takes precedence if both are set.
+    GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_BASE_URL: str = os.getenv(
+        "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta"
+    )
+
+    # AI rate limits. All calls share ONE free-tier key, so the global caps
+    # protect the provider quota; per-user caps are fairness/abuse guards.
+    # Conservative defaults sit under a typical free-tier RPM (~10-15).
+    AI_RPM_USER: int = int(os.getenv("AI_RPM_USER", "3"))
+    AI_RPD_USER: int = int(os.getenv("AI_RPD_USER", "15"))
+    AI_RPM_GLOBAL: int = int(os.getenv("AI_RPM_GLOBAL", "8"))
+    AI_RPD_GLOBAL: int = int(os.getenv("AI_RPD_GLOBAL", "200"))
+
 
 settings = Settings()

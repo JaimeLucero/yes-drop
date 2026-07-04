@@ -200,6 +200,35 @@ export async function generateReminderPlan(
   return response.json()
 }
 
+export interface ComposeResult {
+  approver_email: string | null
+  title: string
+  message: string | null
+  deadline: string | null // absolute UTC ISO
+  scheduled_send_at: string | null // absolute UTC ISO, or null = send now
+  reminders: Reminder[]
+}
+
+/** Compose a full approval automation from a natural-language prompt (Gemini). */
+export async function composeAutomation(
+  prompt: string,
+  now?: string
+): Promise<ComposeResult> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Not authenticated')
+  const response = await fetch(`${BACKEND_URL}/api/compose`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, now: now ?? new Date().toISOString() }),
+  })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail?.message || err.detail || 'Could not compose the automation')
+  }
+  return response.json()
+}
+
 export async function fetchRequests(status?: string): Promise<ApprovalRequest[]> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()

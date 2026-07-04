@@ -3,11 +3,12 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createRequest, uploadFile, createDraft, type Reminder } from '@/lib/api'
+import { createRequest, uploadFile, createDraft, type Reminder, type ComposeResult } from '@/lib/api'
 import { Upload, AlertCircle, CheckCircle, Calendar } from 'lucide-react'
 import { AuthGuard } from '@/components/auth-guard'
 import { ScheduleModal } from '@/components/schedule-modal'
 import { ReminderPlanner } from '@/components/reminders/reminder-planner'
+import { AiComposeBox } from '@/components/requests/ai-compose'
 import { startCreateFormTour } from '@/components/dashboard/product-tour'
 import { ConnectGmailBanner, useGoogleStatus, SEND_PROVIDER } from '@/components/connect-gmail'
 import { format } from 'date-fns'
@@ -73,6 +74,22 @@ function NewRequestForm() {
       router.push('/dashboard')
     },
   })
+
+  // Apply an AI-composed automation into the editable form. Nothing sends here.
+  const applyComposed = (r: ComposeResult) => {
+    setApproverEmail(r.approver_email || '')
+    setTitle(r.title)
+    setMessage(r.message || '')
+    setDeadlineDateTime(r.deadline || '')
+    setReminders(r.reminders || [])
+    if (r.scheduled_send_at) {
+      setAction('schedule')
+      setScheduledTime(r.scheduled_send_at)
+    } else {
+      setAction('send')
+      setScheduledTime('')
+    }
+  }
 
   function calculateDaysUntil(datetimeString: string): number {
     const now = new Date()
@@ -149,6 +166,9 @@ function NewRequestForm() {
         <div className="mb-8">
           <h1 className="text-2xl font-heading font-semibold text-foreground">New request</h1>
           <p className="mt-1 text-sm text-muted-foreground">Send it now, save a draft, or schedule it for later.</p>
+        </div>
+        <div className="mb-8">
+          <AiComposeBox onApply={applyComposed} />
         </div>
         {action !== 'draft' && <ConnectGmailBanner />}
         <form onSubmit={handleSubmit} className="space-y-8">

@@ -34,6 +34,27 @@ class ReminderPlanResponse(BaseModel):
     reminders: list[ReminderInput] = []
 
 
+class ComposeRequest(BaseModel):
+    """Turn a natural-language prompt into a full approval automation (Gemini)."""
+
+    prompt: str
+    now: str | None = None  # client ISO; origin for relative scheduling (default: server now)
+
+
+class ComposeResponse(BaseModel):
+    """A proposed (unsaved) automation the user reviews before sending.
+
+    Maps onto the new-request form: content fields plus an absolute schedule.
+    """
+
+    approver_email: str | None = None  # empty if the prompt named no address
+    title: str
+    message: str | None = None
+    deadline: str | None = None  # absolute UTC ISO
+    scheduled_send_at: str | None = None  # absolute UTC ISO, or null = send now
+    reminders: list[ReminderInput] = []  # absolute UTC send_at, bounded by deadline
+
+
 class ApprovalRequestCreate(BaseModel):
     """Create request (immediate send or scheduled)"""
 

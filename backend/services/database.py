@@ -195,6 +195,42 @@ class ApprovalRequestRepository:
             logger.error(f"Error getting daily count: {e}")
             return 0
 
+    # ---- AI usage (rate limiting for the shared Gemini free-tier key) ----
+
+    @staticmethod
+    def record_ai_usage(user_id: str, kind: str = "compose") -> None:
+        """Log one AI generation call for rate-limit accounting."""
+        try:
+            supabase.table("ai_usage").insert(
+                {"user_id": user_id, "kind": kind}
+            ).execute()
+        except Exception as e:
+            logger.error(f"Error recording AI usage: {e}")
+
+    @staticmethod
+    def count_ai_usage(user_id: str, since_iso: str) -> int:
+        """This user's AI calls since a timestamp (per-user rate limit)."""
+        try:
+            result = supabase.rpc(
+                "get_ai_usage_count", {"user_uuid": user_id, "since_ts": since_iso}
+            ).execute()
+            return result.data if result.data else 0
+        except Exception as e:
+            logger.error(f"Error counting AI usage: {e}")
+            return 0
+
+    @staticmethod
+    def count_ai_usage_global(since_iso: str) -> int:
+        """All users' AI calls since a timestamp (shared-quota global limit)."""
+        try:
+            result = supabase.rpc(
+                "get_ai_usage_count_global", {"since_ts": since_iso}
+            ).execute()
+            return result.data if result.data else 0
+        except Exception as e:
+            logger.error(f"Error counting global AI usage: {e}")
+            return 0
+
     @staticmethod
     def get_next_available_day(user_id: str) -> str | None:
         """Get next available day for sending (has < 5 requests)"""

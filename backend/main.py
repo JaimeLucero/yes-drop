@@ -20,11 +20,15 @@ from services.email import email_service
 from services.database import repository
 from services.gmail_service import gmail_service
 from services.opencode_service import opencode_service
+from services.gemini_service import gemini_service
+from services.ai_rate_limit import enforce_ai_rate_limit
 from models.schemas import (
     ApprovalRequestCreate,
     ApprovalRequestDraft,
     ApprovalRequestUpdate,
     ApprovalRequestResponse,
+    ComposeRequest,
+    ComposeResponse,
     DailyLimitResponse,
     ScheduleRequest,
     GoogleConnectRequest,
@@ -169,6 +173,19 @@ async def generate_reminder_plan(
     return opencode_service.generate_reminder_plan(
         data.intent, data.sent_at, data.deadline
     )
+
+
+@app.post("/api/compose", response_model=ComposeResponse)
+async def compose_automation(
+    data: ComposeRequest,
+    user_id: str = Depends(get_current_user),
+):
+    """Compose a full approval automation from a prompt (Gemini). Rate limited
+    against the shared free-tier key; the result prefills the form for review."""
+    enforce_ai_rate_limit(user_id)
+    # Record before the call: the provider hit consumes quota regardless of outcome.
+    repository.record_ai_usage(user_id, "compose")
+    return gemini_service.compose(data.prompt, data.now)
 
 
 # Short-lived in-process cache for the public stats endpoint so landing-page
