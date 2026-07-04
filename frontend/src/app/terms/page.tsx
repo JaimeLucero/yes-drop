@@ -4,6 +4,7 @@ import { LegalPage } from '@/components/legal-page'
 export const metadata: Metadata = {
   title: 'Terms of Service — YesDrop',
   description: 'The terms that govern your use of YesDrop.',
+  alternates: { canonical: '/terms' },
 }
 
 export default function TermsPage() {

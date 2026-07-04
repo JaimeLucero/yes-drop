@@ -1,0 +1,77 @@
+# YesDrop — email approvals on autopilot
+
+YesDrop is a web application for running approval workflows over email. You send an
+approval request by email, set a deadline, and YesDrop chases the reply for you with
+automatic reminders. Every response is tracked in a single dashboard. The person
+approving decides in one click from their inbox — no account, no login, no app to install.
+
+Website: https://www.yesdrop.online
+
+## The problem it solves
+
+Approvals stall because people forget to reply and the requester has to keep chasing.
+YesDrop closes the loop automatically: it sends the request, reminds non-responders on a
+schedule, enforces a deadline, and records every decision — so nothing sits open forever
+and you stop sending "just checking in" emails.
+
+## How it works (three steps)
+
+1. Send by email. Add an approver, a title, and a deadline, then send. You can schedule
+   it to go out later.
+2. They decide in one click. The approver gets an email with Approve and Reject buttons
+   and responds straight from their inbox — no account, no login.
+3. Track and auto-remind. Status updates live in your dashboard, and reminders chase
+   non-responders until they answer or the deadline passes.
+
+## Key features
+
+- Send approvals by email — the approver decides in one click from their inbox, with no
+  account and nothing to install.
+- Deadlines that enforce themselves — a request left unanswered is marked "ignored" when
+  its respond-by date passes.
+- Reminders on autopilot — schedule follow-ups and YesDrop nudges non-responders for you.
+- One inbox for every approval — track status, history, attachments, and reminders for
+  every request in a single dashboard.
+- File attachments — attach a document (e.g. a PDF) so the approver has full context.
+- Sign in with Google or with an email and password.
+
+## Use cases
+
+- Expense approvals — e.g. sign-off on a quarterly marketing budget by a CFO.
+- Contract sign-off — e.g. renewing a vendor MSA reviewed by Legal.
+- Hiring — e.g. approval to extend an offer at a proposed band.
+- Custom go/no-go — e.g. final approval to publish a launch announcement.
+
+## Pricing
+
+Free to start. Send your first requests in minutes. No credit card required.
+
+## Frequently asked questions
+
+Q: How do I send an approval request by email?
+A: Add your approver's email, a title, and a deadline, then send. YesDrop emails them
+Approve and Reject buttons so they can decide in one click.
+
+Q: Does my approver need a YesDrop account?
+A: No. They get an email with Approve and Reject buttons and decide in one click — no
+sign-up, no login.
+
+Q: How do automatic approval reminders work?
+A: You set a deadline, and YesDrop sends scheduled follow-up reminders to non-responders
+until they reply or the deadline passes.
+
+Q: What happens if nobody responds?
+A: Reminders go out until the deadline. If it passes with no answer, the request is marked
+ignored, so nothing stays open forever.
+
+Q: Can I attach files?
+A: Yes. Attach a document to any request so your approver has full context before deciding.
+
+Q: How much does it cost?
+A: You can start for free and send your first requests in minutes — no credit card required.
+
+## Links
+
+- Home: https://www.yesdrop.online/
+- Privacy Policy: https://www.yesdrop.online/privacy
+- Terms of Service: https://www.yesdrop.online/terms

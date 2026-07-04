@@ -4,6 +4,7 @@ import { LegalPage } from '@/components/legal-page'
 export const metadata: Metadata = {
   title: 'Privacy Policy — YesDrop',
   description: 'How YesDrop collects, uses, and protects your data.',
+  alternates: { canonical: '/privacy' },
 }
 
 export default function PrivacyPage() {
