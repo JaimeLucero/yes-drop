@@ -1,0 +1,13 @@
+/* Brand fonts for the design bundle. The app loads these via next/font (which
+   injects --font-* at runtime); the standalone bundle has no next/font, so we
+   define the same CSS vars here and pull the families from Google Fonts. The
+   @theme in globals.css maps --font-sans/-heading/-mono onto these. System
+   fallbacks keep cards legible if the design runtime blocks the remote fetch. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+
+:root {
+  --font-ibm-plex: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-outfit: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-geist-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-geist-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+}

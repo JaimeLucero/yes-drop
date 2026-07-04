@@ -1,0 +1,8 @@
+/* Design-sync Tailwind entry: pulls the app's real globals.css (Tailwind
+   import, @theme, :root/.dark tokens) and widens source scanning to the UI kit
+   + authored preview cards, so the compiled stylesheet contains every utility
+   those render. Compiled to a static CSS the bundle ships. */
+@import "../.design-sync/ds-fonts.css";
+@import "./src/app/globals.css";
+@source "./src/components/ui";
+@source "../.design-sync/previews";
