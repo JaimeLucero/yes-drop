@@ -31,6 +31,7 @@ backend/venv/
 .DS_Store
 *.pem
 *.pyc
+__pycache__/
 
 # debug
 npm-debug.log*
