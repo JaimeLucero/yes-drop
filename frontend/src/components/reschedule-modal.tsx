@@ -64,6 +64,28 @@ export function RescheduleModal({
   const [showFollowUpPicker, setShowFollowUpPicker] = useState(false)
   const [addingFollowUpType, setAddingFollowUpType] = useState<'before' | 'after' | null>(null)
   const [serverTime, setServerTime] = useState<Date | null>(null)
+  const [originalReminders, setOriginalReminders] = useState<Reminder[]>(initialReminders || [])
+
+  // Re-sync the form to the selected request every time the modal opens. The
+  // modal is mounted once (no key) so the useState initializers above run only
+  // at first mount when no request is selected; without this effect a reschedule
+  // would submit stale state and wipe the request's deadline and reminders.
+  useEffect(() => {
+    if (!open) return
+    const d = initialDate ? new Date(initialDate) : new Date()
+    setDate(d)
+    if (initialDate) {
+      setTime({ hours: d.getHours(), minutes: Math.floor(d.getMinutes() / 5) * 5 })
+    }
+    setDeadlineDateTime(initialDeadline || '')
+    const cfg: FollowUpConfig = {}
+    for (const r of initialReminders || []) {
+      if (r.kind === 'before_deadline' && cfg.beforeDeadline === undefined) cfg.beforeDeadline = r.send_at
+      else if (r.kind === 'after_sending' && cfg.afterSending === undefined) cfg.afterSending = r.send_at
+    }
+    setFollowUpConfig(cfg)
+    setOriginalReminders(initialReminders || [])
+  }, [open, initialDate, initialDeadline, initialReminders])
 
   useEffect(() => {
     const syncServerTime = async () => {
@@ -115,6 +137,16 @@ export function RescheduleModal({
       reminders.push({ kind: 'before_deadline', send_at: new Date(followUpConfig.beforeDeadline).toISOString() })
     if (followUpConfig.afterSending)
       reminders.push({ kind: 'after_sending', send_at: new Date(followUpConfig.afterSending).toISOString() })
+
+    // The single-slot UI shows only the first reminder of each kind; carry any
+    // additional ones through untouched so a reschedule never silently drops
+    // them (e.g. a plan with two after_sending reminders).
+    const firstBefore = originalReminders.findIndex((r) => r.kind === 'before_deadline')
+    const firstAfter = originalReminders.findIndex((r) => r.kind === 'after_sending')
+    originalReminders.forEach((r, idx) => {
+      if (r.kind === 'before_deadline' && idx !== firstBefore) reminders.push(r)
+      else if (r.kind === 'after_sending' && idx !== firstAfter) reminders.push(r)
+    })
 
     onReschedule(isoString, deadlineDays, reminders)
     onOpenChange(false)

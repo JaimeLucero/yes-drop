@@ -9,7 +9,7 @@ import asyncio
 import time
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Header, Depends, Query, Request, HTTPException, UploadFile, File
+from fastapi import FastAPI, Header, Depends, Query, Request, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -170,8 +170,12 @@ async def generate_reminder_plan(
     user_id: str = Depends(get_current_user),
 ):
     """Generate a reminder schedule from a natural-language plan (opencode)."""
-    return opencode_service.generate_reminder_plan(
-        data.intent, data.sent_at, data.deadline
+    # Blocking httpx call to the AI provider; keep it off the event loop.
+    return await asyncio.to_thread(
+        opencode_service.generate_reminder_plan,
+        data.intent,
+        data.sent_at,
+        data.deadline,
     )
 
 
@@ -185,7 +189,8 @@ async def compose_automation(
     enforce_ai_rate_limit(user_id)
     # Record before the call: the provider hit consumes quota regardless of outcome.
     repository.record_ai_usage(user_id, "compose")
-    return gemini_service.compose(data.prompt, data.now)
+    # Blocking httpx call to Gemini; keep it off the event loop.
+    return await asyncio.to_thread(gemini_service.compose, data.prompt, data.now)
 
 
 # Short-lived in-process cache for the public stats endpoint so landing-page
@@ -233,21 +238,43 @@ async def upload_response_document(
     )
 
 
+def _action_error_response(e: HTTPException):
+    """Map action-flow HTTPExceptions to friendly HTML pages."""
+    if e.status_code == 400:
+        return HTMLResponse(
+            "<h1>Invalid action</h1><p>Use ?action=approve or ?action=reject</p>",
+            status_code=400,
+        )
+    if e.status_code == 404:
+        return HTMLResponse("<h1>Invalid token</h1>", status_code=404)
+    raise e
+
+
 @app.get("/action")
-async def action(token: str, action: str, feedback: str | None = Query(None)):
-    """Handle approve/reject action (public endpoint)"""
+async def action(token: str, action: str):
+    """Render the approve/reject confirmation interstitial (public endpoint).
+
+    A decision is only recorded via the POST from this page — passive email
+    link-scanners that GET the URL can't complete the action.
+    """
     try:
-        new_status, html = await service.process_action(token, action, feedback)
+        return HTMLResponse(service.render_confirm_page(token, action))
+    except HTTPException as e:
+        return _action_error_response(e)
+
+
+@app.post("/action/confirm")
+async def action_confirm(
+    token: str = Form(...),
+    action: str = Form(...),
+    feedback: str | None = Form(None),
+):
+    """Record the approve/reject decision submitted from the confirmation page."""
+    try:
+        _, html = await service.process_action(token, action, feedback)
         return HTMLResponse(html)
     except HTTPException as e:
-        if e.status_code == 400:
-            return HTMLResponse(
-                "<h1>Invalid action</h1><p>Use ?action=approve or ?action=reject</p>",
-                status_code=400,
-            )
-        elif e.status_code == 404:
-            return HTMLResponse("<h1>Invalid token</h1>", status_code=404)
-        raise
+        return _action_error_response(e)
 
 
 @app.post("/api/internal/send-scheduled")

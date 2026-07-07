@@ -71,6 +71,14 @@ dev:
 	@echo "Frontend: http://localhost:3000"
 	@echo "Backend: http://localhost:8000"
 
+# Test (backend pytest)
+test:
+	@if [ ! -d "backend/venv" ]; then \
+		echo "Creating virtual environment..."; \
+		cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt; \
+	fi
+	. backend/venv/bin/activate && cd backend && pytest
+
 # Lint
 lint:
 	cd frontend && npm run lint

@@ -41,14 +41,16 @@ export default function ActionContent() {
     setStatus('loading')
 
     try {
-      const params = new URLSearchParams({
+      // POST (not GET) so recording a decision is never a side-effecting GET —
+      // passive email link-scanners can't trip it. Backend reads form fields.
+      const body = new URLSearchParams({
         token,
         action: action || '',
         ...(feedback && { feedback }),
       })
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/action?${params}`,
-        { method: 'GET' }
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/action/confirm`,
+        { method: 'POST', body }
       )
 
       if (response.ok) {

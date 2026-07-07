@@ -176,6 +176,42 @@ class ApprovalRequestRepository:
         return result.data[0] if result.data else None
 
     @staticmethod
+    def claim_scheduled_send(request_id: str, data: dict) -> dict | None:
+        """Atomically flip a request from 'scheduled' to its sent state.
+
+        The ``.eq("status", "scheduled")`` filter turns the UPDATE into a claim:
+        Postgres re-checks the predicate under a row lock, so two overlapping
+        cron invocations cannot both send — only the winner gets a row back.
+        Returns the updated row if THIS call claimed it, else None.
+        """
+        data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        result = (
+            supabase.table("approval_requests")
+            .update(data)
+            .eq("id", request_id)
+            .eq("status", "scheduled")
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def claim_decision(request_id: str, new_status: str, now_iso: str) -> dict | None:
+        """Atomically flip a request from 'pending' to approved/rejected.
+
+        The ``.eq("status", "pending")`` filter makes the decision idempotent:
+        only a still-pending row transitions, so a link prefetch or double-click
+        can't re-decide or re-notify. Returns the row if THIS call decided it.
+        """
+        result = (
+            supabase.table("approval_requests")
+            .update({"status": new_status, "updated_at": now_iso})
+            .eq("id", request_id)
+            .eq("status", "pending")
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    @staticmethod
     def delete(request_id: str) -> bool:
         """Delete a request"""
         result = (
@@ -490,6 +526,40 @@ class ApprovalRequestRepository:
             )
         except Exception as e:
             logger.error(f"Error marking reminder sent: {e}")
+
+    @staticmethod
+    def claim_reminder(reminder_id: str) -> dict | None:
+        """Atomically flip a reminder 'pending' -> 'sent' before sending.
+
+        The ``.eq("status", "pending")`` filter dedups concurrent cron runs:
+        only the invocation that flips the row gets it back; a loser gets None.
+        """
+        result = (
+            supabase.table("request_reminders")
+            .update(
+                {
+                    "status": "sent",
+                    "sent_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            .eq("id", reminder_id)
+            .eq("status", "pending")
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    @staticmethod
+    def reset_reminder_pending(reminder_id: str) -> None:
+        """Revert a claimed reminder to 'pending' after a failed send so it retries."""
+        try:
+            (
+                supabase.table("request_reminders")
+                .update({"status": "pending", "sent_at": None})
+                .eq("id", reminder_id)
+                .execute()
+            )
+        except Exception as e:
+            logger.error(f"Error resetting reminder to pending: {e}")
 
 
 # Singleton instance

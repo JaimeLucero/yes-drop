@@ -82,7 +82,7 @@ export function RequestDetail({ request, onClose, onEdit, onSchedule, onSendNow,
   const isScheduled = request.status === 'scheduled'
   const isModifiable = request.status === 'draft' || isScheduled
   const isSent = ['pending', 'approved', 'rejected', 'ignored'].includes(request.status)
-  const actionUrl = `/action/${request.token}`
+  const actionUrl = `/action?token=${encodeURIComponent(request.token)}&action=approve`
 
   return (
     <div className="flex h-full flex-col">

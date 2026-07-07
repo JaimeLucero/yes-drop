@@ -3,6 +3,7 @@ Business logic for approval requests.
 """
 
 import asyncio
+import html as html_lib
 import logging
 import secrets
 import uuid
@@ -261,7 +262,10 @@ async def send_approval_email(
         rfc_message_id = (
             record.get("gmail_message_id") or f"<approval-{record['id']}@yesdrop.online>"
         )
-        _, thread_id = gmail_service.send(
+        # Gmail send + token refresh are blocking network calls; run them off the
+        # event loop so one slow send can't stall the whole worker.
+        _, thread_id = await asyncio.to_thread(
+            gmail_service.send,
             user_id=record["user_id"],
             to_email=record["approver_email"],
             subject=f"{subject_prefix}Approval Request: {record['title']}",
@@ -279,14 +283,94 @@ async def send_approval_email(
                 {"gmail_message_id": rfc_message_id, "gmail_thread_id": thread_id},
             )
     else:
-        # Brevo (default): send from the verified YesDrop domain.
+        # Brevo (default): send from the verified YesDrop domain. A chosen sender
+        # identity (already ownership-validated by the caller) sets reply-to and
+        # is CC'd so the thread also lands in the sender's inbox.
+        sender_email = record.get("sender_email")
         await email_service.send_approval_request(
             to_email=record["approver_email"],
             request_title=record["title"],
             requester_email=record.get("requester_email") or "noreply@em.yesdrop.online",
             html_content=html,
             subject_prefix=subject_prefix,
+            sender_name=record.get("sender_name"),
+            sender_email=sender_email,
+            cc=[sender_email] if sender_email else None,
         )
+
+
+def _page(inner_html: str) -> str:
+    """Wrap card content in the shared minimal action-page shell."""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>YesDrop</title>
+        <style>
+            body {{ font-family: system-ui, sans-serif;
+                   display: flex; align-items: center; justify-content: center;
+                   min-height: 100vh; margin: 0; background: #f5f5f5; }}
+            .card {{ background: white; padding: 2rem; border-radius: 8px; max-width: 440px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }}
+            .status {{ font-size: 2rem; font-weight: bold; margin: 1rem 0; }}
+            p {{ color: #666; }}
+            textarea {{ width: 100%; box-sizing: border-box; min-height: 90px; margin: 12px 0;
+                       padding: 10px; border: 1px solid #ddd; border-radius: 6px; font: inherit; }}
+            button {{ border: none; border-radius: 6px; padding: 12px 24px; font-size: 15px;
+                     font-weight: 600; color: white; cursor: pointer; }}
+        </style>
+    </head>
+    <body><div class="card">{inner_html}</div></body>
+    </html>
+    """
+
+
+def _result_page(status: str, already: bool = False) -> str:
+    """Final outcome page after a decision is recorded (or was already made)."""
+    color = "#22c55e" if status == "approved" else "#ef4444"
+    note = (
+        f"This request was already {status}."
+        if already
+        else "Your response has been recorded."
+    )
+    return _page(
+        f'<h1>Thank You!</h1>'
+        f'<div class="status" style="color: {color};">{status.title()}</div>'
+        f"<p>{note}</p>"
+    )
+
+
+def _not_actionable_page(status: str) -> str:
+    """Shown when the link targets a request that can't be decided (draft/scheduled/ignored)."""
+    return _page(
+        '<h1>Not available</h1>'
+        f"<p>This request is <strong>{html_lib.escape(status)}</strong> and can no longer "
+        "be actioned from this link.</p>"
+    )
+
+
+def _confirm_page(token: str, action: str, title: str) -> str:
+    """Interstitial: a POST form so passive link-prefetchers can't auto-decide.
+
+    Email security scanners issue GET requests to every link; rendering a confirm
+    button that POSTs the decision means only a real click completes the action.
+    """
+    verb = "Approve" if action == "approve" else "Reject"
+    color = "#22c55e" if action == "approve" else "#ef4444"
+    safe_token = html_lib.escape(token, quote=True)
+    safe_action = html_lib.escape(action, quote=True)
+    return _page(
+        f'<h1>{verb} request?</h1>'
+        f'<p>You are about to <strong>{verb.lower()}</strong> "{html_lib.escape(title)}".</p>'
+        f'<form method="POST" action="/action/confirm">'
+        f'<input type="hidden" name="token" value="{safe_token}">'
+        f'<input type="hidden" name="action" value="{safe_action}">'
+        '<textarea name="feedback" placeholder="Optional message to the requester..."></textarea>'
+        f'<button type="submit" style="background: {color};">Confirm {verb}</button>'
+        '</form>'
+    )
 
 
 class ApprovalRequestService:
@@ -299,6 +383,20 @@ class ApprovalRequestService:
         """Create a new request (immediate send or scheduled)"""
         # Fetch user's email from Supabase Auth
         requester_email = await get_user_email(user_id)
+
+        # Validate the optional sender identity: only honor an address that
+        # actually belongs to this user (their auth email), else ignore it — an
+        # unverified reply-to/CC would let a user spoof a third party.
+        # NOTE: not persisted (no sender_email column yet), so this reply-to/CC
+        # applies to immediate Brevo sends only; scheduled/reminder sends would
+        # need a schema column + UI to carry it.
+        sender_email = None
+        sender_name = None
+        if request.sender_email and requester_email and (
+            request.sender_email.lower() == requester_email.lower()
+        ):
+            sender_email = request.sender_email
+            sender_name = request.sender_name
 
         # Check daily limit only if sending immediately
         if not request.scheduled_send_at:
@@ -321,9 +419,12 @@ class ApprovalRequestService:
         # Determine status and scheduled time
         if request.scheduled_send_at:
             status = "scheduled"
-            scheduled_dt = datetime.fromisoformat(
-                request.scheduled_send_at.replace("Z", "+00:00")
-            )
+            try:
+                scheduled_dt = datetime.fromisoformat(
+                    request.scheduled_send_at.replace("Z", "+00:00")
+                )
+            except (ValueError, AttributeError):
+                raise HTTPException(400, "Invalid scheduled_send_at format")
             # Ensure timezone-aware comparison
             if scheduled_dt.tzinfo is None:
                 scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
@@ -372,8 +473,15 @@ class ApprovalRequestService:
 
         # Send email only if sending immediately
         if status == "pending":
+            # Augment the in-memory record with the validated sender identity so
+            # the Brevo reply-to/CC path can use it (the DB row has no such column).
+            email_record = {
+                **created,
+                "sender_email": sender_email,
+                "sender_name": sender_name,
+            }
             try:
-                await send_approval_email(created)
+                await send_approval_email(email_record)
             except Exception as e:
                 logger.error(
                     f"Failed to send approval email for request {req_id}: {e}",
@@ -550,7 +658,8 @@ class ApprovalRequestService:
 
         # Update status and send email
         now = datetime.now(timezone.utc)
-        deadline_days = req.get("deadline_days", 3)
+        # `or 3`, not get(..., 3): a NULL column returns None and timedelta(days=None) crashes.
+        deadline_days = req.get("deadline_days") or 3
         deadline = now + timedelta(days=deadline_days)
         update_data = {
             "status": "pending",
@@ -628,9 +737,17 @@ class ApprovalRequestService:
         if update_data.file_url is not None:
             payload["file_url"] = update_data.file_url
         if update_data.scheduled_send_at is not None:
-            payload["scheduled_send_at"] = datetime.fromisoformat(
-                update_data.scheduled_send_at.replace("Z", "+00:00")
-            ).isoformat()
+            try:
+                scheduled_dt = datetime.fromisoformat(
+                    update_data.scheduled_send_at.replace("Z", "+00:00")
+                )
+            except (ValueError, AttributeError):
+                raise HTTPException(400, "Invalid scheduled_send_at format")
+            if scheduled_dt.tzinfo is None:
+                scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
+            if scheduled_dt <= datetime.now(timezone.utc):
+                raise HTTPException(400, "scheduled_send_at must be in the future")
+            payload["scheduled_send_at"] = scheduled_dt.isoformat()
 
         updated = repository.update(request_id, payload)
         return to_response(updated)
@@ -720,10 +837,31 @@ class ApprovalRequestService:
         return {"response_file_url": url}
 
     @staticmethod
+    def render_confirm_page(token: str, action: str) -> str:
+        """Render the GET-side interstitial (or the outcome, if already decided)."""
+        if action not in ("approve", "reject"):
+            raise HTTPException(400, "Invalid action")
+        req = repository.get_by_token(token)
+        if not req:
+            raise HTTPException(404, "Invalid token")
+
+        status = req["status"]
+        if status in ("approved", "rejected"):
+            return _result_page(status, already=True)
+        if status != "pending":
+            return _not_actionable_page(status)
+        return _confirm_page(token, action, req.get("title") or "this request")
+
+    @staticmethod
     async def process_action(
         token: str, action: str, feedback: str | None = None
     ) -> tuple[str, str]:
-        """Process approve/reject action. Returns (new_status, html_response)"""
+        """Record an approve/reject decision. Returns (final_status, html_response).
+
+        Idempotent and guarded: only a still-`pending` request can be decided,
+        and the transition is claimed atomically so a prefetch or double-submit
+        can't re-decide, duplicate feedback, or re-notify.
+        """
         if action not in ("approve", "reject"):
             raise HTTPException(400, "Invalid action")
 
@@ -733,13 +871,23 @@ class ApprovalRequestService:
             raise HTTPException(404, "Invalid token")
 
         old_status = req["status"]
+        if old_status in ("approved", "rejected"):
+            # Already decided — show the recorded outcome, don't mutate or re-notify.
+            return old_status, _result_page(old_status, already=True)
+        if old_status != "pending":
+            # draft / scheduled / ignored are not actionable from the email link.
+            return old_status, _not_actionable_page(old_status)
+
         new_status = "approved" if action == "approve" else "rejected"
         now = datetime.now(timezone.utc)
 
-        # Update status
-        repository.update(
-            req["id"], {"status": new_status, "updated_at": now.isoformat()}
-        )
+        # Atomically claim the decision (pending -> approved/rejected).
+        decided = repository.claim_decision(req["id"], new_status, now.isoformat())
+        if not decided:
+            # Lost the race to a concurrent decision; surface the winning outcome.
+            latest = repository.get_by_token(token)
+            final = latest["status"] if latest else new_status
+            return final, _result_page(final, already=True)
 
         # Stop any pending follow-up reminders now that a decision was made.
         repository.cancel_pending_reminders(req["id"])
@@ -763,36 +911,7 @@ class ApprovalRequestService:
                 response_file_url=req.get("response_file_url"),
             )
 
-        # Generate HTML response
-        color = "#22c55e" if action == "approve" else "#ef4444"
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>Thank You</title>
-            <style>
-                body {{ font-family: system-ui, sans-serif; 
-                       display: flex; align-items: center; justify-content: center;
-                       min-height: 100vh; margin: 0; background: #f5f5f5; }}
-                .card {{ background: white; padding: 2rem; border-radius: 8px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }}
-                .status {{ font-size: 2rem; font-weight: bold; color: {color}; margin: 1rem 0; }}
-                p {{ color: #666; }}
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <h1>Thank You!</h1>
-                <div class="status">{new_status.title()}</div>
-                <p>Your response has been recorded.</p>
-            </div>
-        </body>
-        </html>
-        """
-
-        return new_status, html
+        return new_status, _result_page(new_status, already=False)
 
     @staticmethod
     async def send_scheduled_internal(
@@ -864,14 +983,13 @@ class ApprovalRequestService:
 
             raise HTTPException(429, "Daily limit reached, auto-rescheduled")
 
-        # Send email
-        await send_approval_email(req)
-
-        # Update status
+        # Atomically claim the send: flip scheduled -> pending BEFORE sending so
+        # two overlapping cron invocations can't both send this request.
         now = datetime.now(timezone.utc)
-        deadline_days = req.get("deadline_days", 3)
+        # `or 3`, not get(..., 3): a NULL column returns None and timedelta(days=None) crashes.
+        deadline_days = req.get("deadline_days") or 3
         deadline = now + timedelta(days=deadline_days)
-        repository.update(
+        claimed = repository.claim_scheduled_send(
             request_id,
             {
                 "status": "pending",
@@ -881,9 +999,21 @@ class ApprovalRequestService:
                 "follow_up_strategy": req.get(
                     "follow_up_strategy", {"enabled": True, "days_before_deadline": 1}
                 ),
-                "updated_at": now.isoformat(),
             },
         )
+        if not claimed:
+            # Another cron invocation already claimed and sent this request.
+            return {"success": False, "reason": "already_sent"}
+
+        try:
+            await send_approval_email(claimed)
+        except Exception:
+            # Roll the claim back so the next cron retries instead of losing the send.
+            repository.update(
+                request_id,
+                {"status": "scheduled", "sent_at": None, "deadline": None},
+            )
+            raise
 
         # Send notification to requester using stored email
         requester_email = req.get("requester_email")
@@ -946,8 +1076,16 @@ class ApprovalRequestService:
                     # Parent resolved/ignored since the row was queued; retire it.
                     repository.mark_reminder_sent(rem["reminder_id"])
                     continue
-                await send_approval_email(req, is_followup=True, reminder=rem)
-                repository.mark_reminder_sent(rem["reminder_id"])
+                # Claim pending -> sent before sending so overlapping cron runs
+                # can't double-send this reminder.
+                if not repository.claim_reminder(rem["reminder_id"]):
+                    continue
+                try:
+                    await send_approval_email(req, is_followup=True, reminder=rem)
+                except Exception:
+                    # Revert the claim so the next cron retries.
+                    repository.reset_reminder_pending(rem["reminder_id"])
+                    raise
                 results["followups_sent"] += 1
                 logger.info(
                     f"Sent {rem.get('kind')} reminder for request {rem['request_id']}"
@@ -980,15 +1118,21 @@ class ApprovalRequestService:
             repository.mark_reminder_sent(reminder_id)
             return {"skipped": "parent not pending"}
 
+        # Claim pending -> sent before sending so a concurrent invocation can't
+        # double-send this reminder.
+        if not repository.claim_reminder(reminder_id):
+            return {"skipped": "already sent"}
+
         try:
             await send_approval_email(req, is_followup=True, reminder=reminder)
-            repository.mark_reminder_sent(reminder_id)
             logger.info(
                 f"Sent {reminder.get('kind')} reminder {reminder_id} "
                 f"for request {reminder['request_id']}"
             )
             return {"success": True}
         except Exception as e:
+            # Revert the claim so the next cron retries.
+            repository.reset_reminder_pending(reminder_id)
             logger.error(f"Failed to send reminder {reminder_id}: {e}")
             raise HTTPException(500, str(e))
 

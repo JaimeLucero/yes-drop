@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 
@@ -64,7 +64,7 @@ class ApprovalRequestCreate(BaseModel):
     file_url: str | None = None
     scheduled_send_at: str | None = None
     notify_requester: bool = True
-    deadline_days: int = 3
+    deadline_days: int = Field(3, ge=1, le=365)
     follow_up_strategy: FollowUpStrategy | None = None
     reminders: list[ReminderInput] | None = None
     # Optional verified sender identity (reply-to + CC). Must belong to the user.
@@ -104,7 +104,7 @@ class ApprovalRequestUpdate(BaseModel):
     file_url: str | None = None
     scheduled_send_at: str | None = None
     notify_requester: bool | None = None
-    deadline_days: int | None = None
+    deadline_days: int | None = Field(None, ge=1, le=365)
     follow_up_strategy: FollowUpStrategy | None = None
 
 
@@ -112,7 +112,7 @@ class ScheduleRequest(BaseModel):
     """Schedule a draft request"""
 
     scheduled_send_at: str
-    deadline_days: int | None = None
+    deadline_days: int | None = Field(None, ge=1, le=365)
     follow_up_strategy: FollowUpStrategy | None = None
     reminders: list[ReminderInput] | None = None
 
