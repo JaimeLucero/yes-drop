@@ -8,11 +8,26 @@ export function createClient() {
   )
 }
 
+/**
+ * Base URL every auth redirect (OAuth callback, email confirm, password reset)
+ * is built from. Defaults to the running origin, so prod needs no config.
+ *
+ * NEXT_PUBLIC_SITE_URL pins it explicitly. Set it in frontend/.env.local to
+ * keep local dev on localhost, or to point at a tunnel (ngrok/cloudflared)
+ * when testing OAuth from a public URL.
+ *
+ * NOTE: this only controls what we *ask* for. Supabase validates the value
+ * against Auth -> URL Configuration -> Redirect URLs and silently falls back
+ * to the project's Site URL (prod) when it does not match, which looks like
+ * "local login navigated to prod". Allowlist the origin there too.
+ */
 function origin(): string {
+  const pinned = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '')
+  if (pinned) return pinned
   return typeof window !== 'undefined' ? window.location.origin : ''
 }
 
-// Gmail send scope — granted at Google login so we can send approvals as the user.
+// Gmail send scope: granted at Google login so we can send approvals as the user.
 export const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send'
 
 export async function signInWithGoogle() {
@@ -52,7 +67,7 @@ export async function connectGmail() {
 
 /**
  * Create an account with email + password. With "Confirm email" enabled in
- * Supabase, this returns `session: null` and sends a verification email — the
+ * Supabase, this returns `session: null` and sends a verification email, and the
  * caller should show a "check your inbox" state. Throws on already-registered.
  */
 export async function signUpWithEmail(email: string, password: string, fullName?: string) {

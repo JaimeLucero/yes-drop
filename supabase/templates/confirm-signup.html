@@ -1,0 +1,78 @@
+<!--
+  YesDrop: Supabase "Confirm signup" email template.
+  Paste into: Supabase Dashboard → Authentication → Emails → Templates → Confirm signup.
+  Suggested subject: Confirm your YesDrop email
+  The link uses {{ .TokenHash }} so it drives /auth/confirm (verifyOtp) instead of
+  the Supabase /verify redirect, which avoids the one-time-token double-verify (403).
+
+  The base URL comes from {{ .RedirectTo }} (the emailRedirectTo the client passed,
+  i.e. the origin the signup actually happened on) and falls back to {{ .SiteURL }}
+  only when no redirect was supplied. That keeps a local-dev signup on localhost
+  instead of bouncing the confirm link to production.
+
+  Supabase drops .RedirectTo unless the origin is allowlisted under
+  Authentication -> URL Configuration -> Redirect URLs, so add
+  http://localhost:3000/** there for local dev. Site URL stays the prod origin.
+-->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Confirm your email to start sending approval requests.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;margin:0;padding:32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="width:480px;max-width:92%;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+        <!-- Brand -->
+        <tr>
+          <td style="padding:28px 32px 0 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width:36px;height:36px;background:#33436a;border-radius:9px;color:#ffffff;font-size:18px;font-weight:700;text-align:center;line-height:36px;">Y</td>
+                <td style="padding-left:10px;font-size:18px;font-weight:700;color:#0f172a;">YesDrop</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- Body -->
+        <tr>
+          <td style="padding:24px 32px 8px 32px;">
+            <h1 style="margin:0 0 8px 0;font-size:22px;line-height:1.3;color:#0f172a;font-weight:700;">Confirm your email</h1>
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#475569;">
+              Thanks for signing up for YesDrop. Confirm your email to start sending approval requests.
+            </p>
+          </td>
+        </tr>
+        <!-- Button -->
+        <tr>
+          <td style="padding:24px 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:10px;background:#33436a;">
+                  <a href="{{ if .RedirectTo }}{{ .RedirectTo }}{{ else }}{{ .SiteURL }}/auth/confirm{{ end }}?token_hash={{ .TokenHash }}&type=email"
+                     style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;">
+                    Confirm email
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- Fallback link -->
+        <tr>
+          <td style="padding:0 32px 24px 32px;">
+            <p style="margin:0 0 6px 0;font-size:12px;color:#94a3b8;">Or paste this link into your browser:</p>
+            <p style="margin:0;font-size:12px;line-height:1.5;word-break:break-all;">
+              <a href="{{ if .RedirectTo }}{{ .RedirectTo }}{{ else }}{{ .SiteURL }}/auth/confirm{{ end }}?token_hash={{ .TokenHash }}&type=email" style="color:#33436a;">{{ if .RedirectTo }}{{ .RedirectTo }}{{ else }}{{ .SiteURL }}/auth/confirm{{ end }}?token_hash={{ .TokenHash }}&type=email</a>
+            </p>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #e2e8f0;">
+            <p style="margin:0;font-size:12px;line-height:1.6;color:#94a3b8;">
+              This link expires in 24 hours. If you didn't create a YesDrop account, you can safely ignore this email.
+            </p>
+            <p style="margin:10px 0 0 0;font-size:12px;color:#cbd5e1;">© 2026 YesDrop</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
