@@ -158,7 +158,7 @@ function NewRequestForm() {
           <div className="mb-6 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
             <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
             <div>
-              <p className="text-sm font-medium text-foreground">You&apos;re in — send your first approval request</p>
+              <p className="text-sm font-medium text-foreground">You&apos;re in. Send your first approval request</p>
               <p className="text-sm text-muted-foreground">Add an approver and a title, then hit send. That&apos;s the whole thing.</p>
             </div>
           </div>

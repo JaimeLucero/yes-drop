@@ -26,7 +26,7 @@ export default function AuthCallbackPage() {
           try {
             await connectGoogleToken(rt, data.session.user?.email)
           } catch {
-            /* non-fatal — user can connect later from settings */
+            /* non-fatal: user can connect later from settings */
           }
         }
         router.push('/dashboard')

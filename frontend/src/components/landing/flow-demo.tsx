@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 const STEPS = ['Send by email', 'They decide', 'You track'] as const
 
 /**
- * Hero signature: a looping demo of the core loop — send a request, the approver
+ * Hero signature: a looping demo of the core loop: send a request, the approver
  * decides in one click, the dashboard updates. CSS crossfade between three stacked
  * panels; pauses/holds the final state under prefers-reduced-motion.
  */
@@ -102,7 +102,7 @@ function SendPanel() {
     <Shell title="New request">
       <div className="space-y-3">
         <Row label="Approver" value="cfo@acme.com" />
-        <Row label="Title" value="Budget approval — Q3" />
+        <Row label="Title" value="Budget approval: Q3" />
         <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
           <Paperclip className="h-3.5 w-3.5" /> budget-q3.pdf
         </div>
@@ -119,7 +119,7 @@ function DecidePanel() {
     <Shell title="Approver's inbox">
       <div className="space-y-4">
         <div className="rounded-lg border-l-2 border-primary bg-secondary/50 px-3 py-2">
-          <p className="text-sm font-semibold text-foreground">Budget approval — Q3</p>
+          <p className="text-sm font-semibold text-foreground">Budget approval: Q3</p>
           <p className="text-xs text-muted-foreground">from you@acme.com · needs your approval</p>
         </div>
         <p className="text-xs leading-relaxed text-muted-foreground">
@@ -146,7 +146,7 @@ function TrackPanel() {
         <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 dark:border-emerald-900 dark:bg-emerald-950/30">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">Budget approval — Q3</p>
+            <p className="truncate text-sm font-medium text-foreground">Budget approval: Q3</p>
             <p className="truncate text-xs text-muted-foreground">cfo@acme.com approved · just now</p>
           </div>
           <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">

@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'YesDrop — email approvals on autopilot',
+    name: 'YesDrop: email approvals on autopilot',
     short_name: 'YesDrop',
     description:
       'Send approval requests by email, set deadlines, and let automatic reminders chase the reply.',

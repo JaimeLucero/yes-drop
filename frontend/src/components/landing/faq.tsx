@@ -9,11 +9,11 @@ export const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'Does my approver need a YesDrop account?',
-    a: 'No. They get an email with Approve and Reject buttons and decide in one click — no sign-up, no login.',
+    a: 'No. They get an email with Approve and Reject buttons and decide in one click. No sign-up, no login.',
   },
   {
     q: 'How do automatic approval reminders work?',
-    a: 'You set a deadline, and YesDrop sends scheduled follow-up reminders to non-responders until they reply or the deadline passes — so you never send another “just checking in.”',
+    a: 'You set a deadline, and YesDrop sends scheduled follow-up reminders to non-responders until they reply or the deadline passes, so you never send another “just checking in.”',
   },
   {
     q: 'How do I sign in?',
@@ -21,11 +21,11 @@ export const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'What happens if nobody responds?',
-    a: 'You set a deadline, and YesDrop sends automatic reminders until then. If the deadline passes with no answer, the request is marked ignored — nothing sits open forever.',
+    a: 'You set a deadline, and YesDrop sends automatic reminders until then. If the deadline passes with no answer, the request is marked ignored, and nothing sits open forever.',
   },
   {
     q: 'What can I use YesDrop for?',
-    a: 'Expense sign-offs, contract and MSA approvals, hiring and offer approvals, or launch go/no-go — any decision that needs a yes.',
+    a: 'Expense sign-offs, contract and MSA approvals, hiring and offer approvals, or launch go/no-go: any decision that needs a yes.',
   },
   {
     q: 'Can I attach files?',
@@ -33,7 +33,7 @@ export const FAQS: { q: string; a: string }[] = [
   },
   {
     q: 'How much does it cost?',
-    a: 'You can start for free and send your first requests in minutes — no credit card required.',
+    a: 'You can start for free and send your first requests in minutes. No credit card required.',
   },
 ]
 

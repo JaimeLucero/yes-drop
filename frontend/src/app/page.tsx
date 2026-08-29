@@ -70,7 +70,7 @@ export default function LandingPage() {
                 </h1>
                 <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
                   Send an approval request by email, set a deadline, and let automatic reminders chase the
-                  reply — every response tracked in one place.
+                  reply. Every response tracked in one place.
                 </p>
               </div>
 
@@ -117,7 +117,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-14 text-center">
             <h2 className="mb-3 text-3xl font-heading font-semibold tracking-tight lg:text-4xl">
-              From request to decision — automatically
+              From request to decision, automatically
             </h2>
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
               YesDrop runs the whole approval loop, so you stop chasing replies and start closing them.
@@ -130,7 +130,7 @@ export default function LandingPage() {
                 icon: Send,
                 title: 'Send approvals by email',
                 description:
-                  'Send a request and your approver decides in one click, right from their inbox — no account, no app to install.',
+                  'Send a request and your approver decides in one click, right from their inbox. No account, no app to install.',
               },
               {
                 icon: CalendarClock,

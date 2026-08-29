@@ -49,7 +49,7 @@ const steps = [
   {
     icon: LayoutDashboard,
     title: 'Reminders + tracking, automatic',
-    caption: 'Automatic reminders chase non-responders until your deadline, and your dashboard updates live — so you never write a follow-up again.',
+    caption: 'Automatic reminders chase non-responders until your deadline, and your dashboard updates live, so you never write a follow-up again.',
     Panel: DashboardPanel,
   },
 ]

@@ -34,7 +34,7 @@ function ConfirmInner() {
       router.replace(DONE)
     }
 
-    // If the Supabase /verify redirect already established a session, we're done —
+    // If the Supabase /verify redirect already established a session, we're done;
     // don't call verifyOtp again (that re-consumes a one-time token → 403/"stuck").
     const sub = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) finish()
@@ -101,7 +101,7 @@ function ConfirmInner() {
             <p className="text-sm text-muted-foreground">{error}</p>
             {resent ? (
               <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                Sent — check your inbox for a fresh link.
+                Sent. Check your inbox for a fresh link.
               </p>
             ) : (
               email && (

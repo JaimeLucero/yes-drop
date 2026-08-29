@@ -6,8 +6,8 @@ Covers the bugs fixed in the deep-check pass:
 - deadline_days schema bounds.
 - atomic claim on scheduled send prevents double-send.
 
-The repository, email service, and module helpers are monkeypatched — no DB or
-network — mirroring tests/test_ai_rate_limit.py.
+The repository, email service, and module helpers are monkeypatched, with no DB or
+network, mirroring tests/test_ai_rate_limit.py.
 """
 
 from datetime import datetime, timezone

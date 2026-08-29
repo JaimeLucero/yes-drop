@@ -15,7 +15,7 @@ export function SendApproval() {
         <DialogHeader>
           <DialogTitle>Send approval request</DialogTitle>
           <DialogDescription>
-            The approver gets an email with Approve and Reject buttons — no account needed.
+            The approver gets an email with Approve and Reject buttons. No account needed.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

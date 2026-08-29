@@ -7,7 +7,7 @@ import { createClient, signOut } from '@/lib/supabase'
 /**
  * Client-side gate for authenticated pages. Redirects to /login when there is
  * no session, and signs out + redirects unverified users (email_confirmed_at
- * null) — so the app stays inaccessible until the email is verified, even if
+ * null), so the app stays inaccessible until the email is verified, even if
  * Supabase's "Confirm email" toggle were ever off.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {

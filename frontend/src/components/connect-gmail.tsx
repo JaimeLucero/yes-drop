@@ -80,7 +80,7 @@ export function GmailAccountCard() {
               {data.email || 'Gmail connected'}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">No Gmail connected — you can&apos;t send requests yet.</p>
+            <p className="text-sm text-muted-foreground">No Gmail connected. You can&apos;t send requests yet.</p>
           )}
         </div>
         {!isLoading &&
@@ -120,7 +120,7 @@ export function GmailAccountCard() {
       {data?.last_error && (
         <p className="mt-3 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Last send error — try reconnecting.
+          Last send error. Try reconnecting.
         </p>
       )}
     </div>

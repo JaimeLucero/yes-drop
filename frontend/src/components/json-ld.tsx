@@ -4,7 +4,7 @@ export function JsonLd({ data }: { data: Record<string, unknown> }) {
   return (
     <script
       type="application/ld+json"
-      // JSON.stringify output is safe here — the data is authored, not user input.
+      // JSON.stringify output is safe here: the data is authored, not user input.
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
     />
   )

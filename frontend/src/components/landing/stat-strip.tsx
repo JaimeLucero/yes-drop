@@ -72,14 +72,14 @@ export function StatStrip({ tone = 'default' }: { tone?: 'default' | 'onPrimary'
         { label: 'Requests sent', value: stats!.total_sent.toLocaleString() },
         {
           label: 'Approval rate',
-          value: stats!.approval_rate != null ? `${stats!.approval_rate}%` : '—',
+          value: stats!.approval_rate != null ? `${stats!.approval_rate}%` : 'N/A',
         },
         {
           label: 'Avg response',
           value:
             stats!.avg_response_hours != null
               ? formatHours(stats!.avg_response_hours)
-              : '—',
+              : 'N/A',
         },
         { label: 'Teams onboard', value: stats!.active_users.toLocaleString() },
       ]

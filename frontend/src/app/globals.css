@@ -49,7 +49,7 @@
 }
 
 :root {
-  /* Clean, neutral palette — slate-blue primary, near-zero-chroma grays */
+  /* Clean, neutral palette: slate-blue primary, near-zero-chroma grays */
   --background: oklch(0.99 0 0);
   --foreground: oklch(0.22 0.015 256.8);
   --card: oklch(1 0 0);
@@ -180,7 +180,7 @@
     @apply inline-flex items-center justify-center px-5 py-2.5 bg-accent text-accent-foreground font-medium rounded-lg hover:bg-accent/80 transition-colors;
   }
 
-  /* Monospace data chip — counts, timestamps, stat numbers */
+  /* Monospace data chip: counts, timestamps, stat numbers */
   .data-num {
     @apply font-mono tabular-nums tracking-tight;
   }

@@ -12,7 +12,7 @@ const PLACEHOLDER =
 /**
  * Natural-language "compose with AI" box. On success it hands the generated
  * automation to the parent via onApply, which prefills the editable form.
- * Nothing is sent here — the user reviews and submits the form themselves.
+ * Nothing is sent here; the user reviews and submits the form themselves.
  */
 export function AiComposeBox({ onApply }: { onApply: (result: ComposeResult) => void }) {
   const [prompt, setPrompt] = useState('')
@@ -21,7 +21,7 @@ export function AiComposeBox({ onApply }: { onApply: (result: ComposeResult) => 
     mutationFn: () => composeAutomation(prompt),
     onSuccess: (result) => {
       onApply(result)
-      toast.success('Draft ready below — review and edit before sending.')
+      toast.success('Draft ready below. Review and edit before sending.')
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Could not compose the automation')

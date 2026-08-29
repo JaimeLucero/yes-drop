@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 function formatHours(h: number | null): string {
-  if (h == null) return '—'
+  if (h == null) return 'N/A'
   if (h < 1) return `${Math.round(h * 60)}m`
   if (h < 48) return `${h % 1 === 0 ? h : h.toFixed(1)}h`
   return `${Math.round(h / 24)}d`
@@ -119,7 +119,7 @@ export function AnalyticsBand() {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-foreground/50">
-                Not enough data yet — send a few requests to see your trend.
+                Not enough data yet. Send a few requests to see your trend.
               </div>
             )}
           </div>

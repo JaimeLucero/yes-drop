@@ -54,7 +54,7 @@ export function ShowcasePanel() {
             Approvals that close themselves.
           </h2>
           <p className="text-base leading-relaxed text-primary-foreground/75">
-            Email approvals with deadlines and automatic reminders — every response tracked in one place.
+            Email approvals with deadlines and automatic reminders. Every response tracked in one place.
           </p>
         </div>
 
@@ -76,7 +76,7 @@ export function ShowcasePanel() {
                 C
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">Budget approval — Q3</p>
+                <p className="truncate text-sm font-semibold">Budget approval: Q3</p>
                 <p className="truncate text-xs text-slate-500">cfo@acme.com</p>
               </div>
               <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">

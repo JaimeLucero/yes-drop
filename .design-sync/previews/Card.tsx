@@ -21,7 +21,7 @@ export function ApprovalRequest() {
         </CardAction>
       </CardHeader>
       <CardContent className="text-muted-foreground">
-        Requesting approval on the Q3 marketing spend. Breakdown attached — respond by Friday.
+        Requesting approval on the Q3 marketing spend. Breakdown attached. Respond by Friday.
       </CardContent>
       <CardFooter className="justify-end gap-2">
         <Button variant="outline" size="sm">

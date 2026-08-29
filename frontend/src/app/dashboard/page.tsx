@@ -60,7 +60,7 @@ function DashboardView() {
   const launchTour = () => startDashboardTour((href) => router.push(href))
 
   // Auto-run the tour ONLY right after signup (?tour=1), once. Returning users
-  // are never forced into it (the overlay would block the dashboard) — they can
+  // are never forced into it (the overlay would block the dashboard); they can
   // replay via the sidebar "Take a tour" button.
   const tourStarted = useRef(false)
   useEffect(() => {

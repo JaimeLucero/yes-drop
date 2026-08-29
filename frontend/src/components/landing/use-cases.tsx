@@ -32,7 +32,7 @@ const EXAMPLES: Example[] = [
   },
   {
     tab: 'Hiring',
-    title: 'Offer — Senior Engineer',
+    title: 'Offer: Senior Engineer',
     approver: 'head.of.eng@acme.com',
     blurb: 'Approval to extend an offer at the proposed band. Scorecard attached.',
     file: 'offer-packet.pdf',
@@ -58,7 +58,7 @@ export function UseCases() {
         <div className="mb-10 text-center">
           <h2 className="text-3xl font-heading font-semibold tracking-tight lg:text-4xl">Whatever needs a yes</h2>
           <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
-            Same flow for any sign-off — pick one to see the request.
+            Same flow for any sign-off. Pick one to see the request.
           </p>
         </div>
 

@@ -4,7 +4,7 @@ Turn a natural-language prompt into a full approval-email automation via Gemini.
 Gemini returns a strict JSON object of email content plus RELATIVE schedule
 offsets; we materialize absolute UTC send/deadline/reminder times server-side
 (reusing the opencode offset helpers). The user always reviews/edits the result
-in the form before anything is sent — this endpoint never sends email.
+in the form before anything is sent; this endpoint never sends email.
 """
 
 import json

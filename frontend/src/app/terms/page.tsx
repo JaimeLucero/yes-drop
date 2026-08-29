@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { LegalPage } from '@/components/legal-page'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — YesDrop',
+  title: 'Terms of Service | YesDrop',
   description: 'The terms that govern your use of YesDrop.',
   alternates: { canonical: '/terms' },
 }

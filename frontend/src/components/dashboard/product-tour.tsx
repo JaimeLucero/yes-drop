@@ -45,13 +45,13 @@ export function startDashboardTour(navigate: (href: string) => void) {
     },
     {
       element: '[data-tour="new-request"]',
-      popover: { title: 'Send a request', description: 'Start an approval request — by email — from here.' },
+      popover: { title: 'Send a request', description: 'Start an approval request by email from here.' },
     },
     {
       element: '[data-tour="folders"]',
       popover: {
         title: 'Track by status',
-        description: 'Drafts, scheduled, sent, approved, rejected — every request, organized.',
+        description: 'Drafts, scheduled, sent, approved, rejected: every request, organized.',
       },
     },
     {
@@ -109,7 +109,7 @@ export function startCreateFormTour() {
   const steps: DriveStep[] = [
     {
       element: '[data-tour="approver"]',
-      popover: { title: 'Who approves?', description: 'Enter the approver’s email — they don’t need an account.' },
+      popover: { title: 'Who approves?', description: 'Enter the approver’s email. They don’t need an account.' },
     },
     {
       element: '[data-tour="title"]',
@@ -128,7 +128,7 @@ export function startCreateFormTour() {
     },
     {
       element: '[data-tour="submit"]',
-      popover: { title: 'Send it', description: 'Send now, save a draft, or schedule it — then you’re done.' },
+      popover: { title: 'Send it', description: 'Send now, save a draft, or schedule it, then you’re done.' },
     },
   ]
 

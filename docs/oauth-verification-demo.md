@@ -1,4 +1,4 @@
-# Gmail OAuth verification — demo recording runbook
+# Gmail OAuth verification: demo recording runbook
 
 Google rejected the verification for project `yes-drop` (OAuth client
 `788299810813-…apps.googleusercontent.com`, sensitive scope `gmail.send`) with:
@@ -7,7 +7,7 @@ Google rejected the verification for project `yes-drop` (OAuth client
 2. Video does not sufficiently demonstrate app functionality.
 
 **Why the first video failed:** production runs `SEND_PROVIDER=brevo`, which hides
-the whole Gmail path — the "Connect Gmail" consent trigger returns `null`
+the whole Gmail path: the "Connect Gmail" consent trigger returns `null`
 (`frontend/src/components/connect-gmail.tsx:32`) and the scoped `gmail.send` send
 never runs (`backend/services/requests.py`, gated on `SEND_PROVIDER == "gmail"`).
 So a recording against production can't show the consent screen or a real Gmail
@@ -15,7 +15,7 @@ send.
 
 This runbook records a new video with the app in **gmail mode**, using the exact
 same OAuth client and `gmail.send` scope Google is reviewing. It is for recording
-only — this branch (`demo/gmail-oauth-verification`) must not be merged or
+only. This branch (`demo/gmail-oauth-verification`) must not be merged or
 deployed. Production stays on `brevo` until Google approves.
 
 ---
@@ -48,12 +48,12 @@ can show the email delivered and an Approve click.
 ## 2. Start the app locally
 
 ```bash
-# Terminal A — backend (FastAPI)
+# Terminal A: backend (FastAPI)
 cd backend
 source venv/bin/activate
 uvicorn main:app --reload --port 8000
 
-# Terminal B — frontend (Next.js)
+# Terminal B: frontend (Next.js)
 cd frontend
 npm run dev
 ```
@@ -70,7 +70,7 @@ arrives (steps below). If it sends, you are clear to record.
 
 Record the two items Google asked for, in one continuous take.
 
-### Item 1 — OAuth consent screen workflow
+### Item 1: OAuth consent screen workflow
 
 1. Landing page → **Start for free** → **Continue with Google**.
 2. Choose the Google account → the **Google consent screen** appears, showing the
@@ -78,7 +78,7 @@ Record the two items Google asked for, in one continuous take.
    so it is clearly on screen.
 3. Click **Allow / Continue**. You land on `/dashboard`; the app has stored the
    Gmail send grant.
-4. Open `/settings` to show the connected **Sending account** (Gmail address) —
+4. Open `/settings` to show the connected **Sending account** (Gmail address),
    proof the scope was granted to this app.
 
 > Alternative that shows the in-app trigger explicitly: sign up with
@@ -88,7 +88,7 @@ Record the two items Google asked for, in one continuous take.
 > otherwise it falls back to a full Google re-login. The Continue-with-Google path
 > above is the robust default.
 
-### Item 2 — app functionality (uses the scope)
+### Item 2: app functionality (uses the scope)
 
 5. **New request** → Approver Email = your second address, add a Title and
    Message. (Optionally use the "Compose with AI" box to draft it.)

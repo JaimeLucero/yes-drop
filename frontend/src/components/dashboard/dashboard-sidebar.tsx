@@ -24,7 +24,7 @@ import {
 interface DashboardSidebarProps {
   activeStatus: FolderValue
   onSelectFolder: (value: FolderValue) => void
-  /** called after a nav action — used to close the mobile drawer */
+  /** called after a nav action; used to close the mobile drawer */
   onNavigate?: () => void
   /** desktop icon-rail mode */
   collapsed?: boolean

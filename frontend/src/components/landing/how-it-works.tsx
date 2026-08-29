@@ -11,7 +11,7 @@ const STEPS: { n: string; Icon: LucideIcon; title: string; desc: string }[] = [
     n: '2',
     Icon: MousePointerClick,
     title: 'They decide in one click',
-    desc: 'Your approver approves or rejects straight from the email — no account, no login.',
+    desc: 'Your approver approves or rejects straight from the email. No account, no login.',
   },
   {
     n: '3',

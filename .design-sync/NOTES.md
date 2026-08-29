@@ -1,8 +1,8 @@
-# Design-sync notes — YesDrop UI kit
+# Design-sync notes: YesDrop UI kit
 
 Scope: the shadcn-style UI primitives in `frontend/src/components/ui/` only (9 components:
 Button, Badge, Input, Label, Textarea, Calendar, Card, Dialog, AlertDialog). App-coupled
-components (dashboard/requests/reminders/modals) are intentionally excluded — they depend on
+components (dashboard/requests/reminders/modals) are intentionally excluded; they depend on
 Supabase, react-query, and next/navigation and won't render standalone.
 
 ## Build setup (this is an app repo, not a packaged design system)
@@ -19,7 +19,7 @@ Supabase, react-query, and next/navigation and won't render standalone.
 - `--node-modules frontend/node_modules`; `cfg.tsconfig: tsconfig.json` (resolves the `@/*`
   alias the components import through).
 
-## CSS — Tailwind v4 must be compiled to a static stylesheet
+## CSS: Tailwind v4 must be compiled to a static stylesheet
 
 The styling is Tailwind v4 **source** (`@import "tailwindcss"` in globals.css), not a shipped
 stylesheet. Before each build, compile it:
@@ -34,7 +34,7 @@ npx --yes @tailwindcss/cli@$TWV -i .ds-tw-input.css -o .design-sync-tw.css --min
   the UI components and `.design-sync/previews/` (so preview-only utility classes compile).
   `cfg.cssEntry` points at the compiled `.design-sync-tw.css`.
 
-## Dark-theme `.dark {` selector — FIXED (was a pre-existing repo bug)
+## Dark-theme `.dark {` selector: FIXED (was a pre-existing repo bug)
 
 `frontend/src/app/globals.css` previously had its dark-theme token block floating with **no
 `.dark {` opener** (after `:root` closed ~line 97), so Next's PostCSS silently dropped those
@@ -42,16 +42,16 @@ declarations and **dark mode was dead**, and the standalone Tailwind CLI errored
 (`CssSyntaxError: Missing opening {`). Fixed 2026-07-04 by inserting `.dark {` at line 99 (committed
 alongside this sync). The earlier workaround (compiling against a repaired copy `.ds-globals-fixed.css`)
 is no longer needed and was removed. If a future globals.css edit re-breaks the block, the CLI will
-error again — restore the `.dark {` opener.
+error again; restore the `.dark {` opener.
 
 ## Fonts
 
 The app loads Geist / Geist Mono / Outfit / IBM Plex Sans via `next/font` (injects `--font-*`
 at runtime). The standalone bundle has no next/font, so `.design-sync/ds-fonts.css` defines those
 CSS vars and pulls the families from Google Fonts (imported into the TW compile). Validate reports
-`[FONT_REMOTE]` (loads at runtime) — accepted.
+`[FONT_REMOTE]` (loads at runtime), accepted.
 
-## Known render warns (checked, benign — do not chase)
+## Known render warns (checked, benign; do not chase)
 
 - `[RENDER_THIN]` on **Dialog** and **AlertDialog**: "rendered height 0px". Base UI dialogs use
   `position: fixed` popups portaled to body, which measure 0 in the flow. The screenshots show both
@@ -60,10 +60,10 @@ CSS vars and pulls the families from Google Fonts (imported into the TW compile)
 
 ## Re-sync risks (what can silently go stale)
 
-- **`.design-sync-tw.css` is a generated build input, not committed** — regenerate it (compile
+- **`.design-sync-tw.css` is a generated build input, not committed**; regenerate it (compile
   command above) before every build. If globals.css changes tokens, the compiled CSS must be
   regenerated or cards ship stale colors.
-- **Fonts are remote** — if the design runtime blocks the Google Fonts host, cards fall back to
+- **Fonts are remote**: if the design runtime blocks the Google Fonts host, cards fall back to
   system sans. Consider self-hosting woff2 via `cfg.extraFonts` if that happens.
 - **Barrel `frontend/_ds-entry.ts`** must list every UI file you want bundled; a new primitive
   needs adding both here and to `cfg.componentSrcMap`.

@@ -1,10 +1,10 @@
 # YesDrop
 
-> YesDrop is a web app that runs email-based approval workflows on autopilot. Send an approval request by email, set a deadline, and let automatic reminders chase the reply — every response tracked in one dashboard. Approvers decide in one click straight from their inbox, with no account and no login.
+> YesDrop is a web app that runs email-based approval workflows on autopilot. Send an approval request by email, set a deadline, and let automatic reminders chase the reply. Every response tracked in one dashboard. Approvers decide in one click straight from their inbox, with no account and no login.
 
 ## What it does
 
-- Send approvals by email; the approver clicks Approve or Reject right in the email — no sign-up required.
+- Send approvals by email; the approver clicks Approve or Reject right in the email. No sign-up required.
 - Deadlines enforce themselves: unanswered requests are marked "ignored" once the date passes.
 - Automatic reminders nudge non-responders until they reply or the deadline hits.
 - One dashboard tracks status, history, attachments, and reminders for every request.
