@@ -21,6 +21,14 @@ class Settings:
 
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     BACKEND_URL: str = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+    # Public origin for images embedded in outbound email. Must be reachable
+    # from the open internet: mail clients proxy images through their own
+    # servers (Gmail via googleusercontent), so a localhost FRONTEND_URL in
+    # local dev renders a broken image. Always points at the deployed origin.
+    EMAIL_ASSET_BASE_URL: str = os.getenv(
+        "EMAIL_ASSET_BASE_URL", "https://www.yesdrop.online"
+    ).rstrip("/")
     CORS_ORIGINS: list[str] = os.getenv("FRONTEND_URL", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 
     CRON_SECRET: str | None = os.getenv("CRON_SECRET")
@@ -39,7 +47,28 @@ class Settings:
     # opencode (reminder schedule generation). OpenAI-compatible gateway.
     # Default to a FREE model ($0/token) so generation never incurs charges.
     OPENCODE_API_KEY: str | None = os.getenv("OPENCODE_API_KEY")
-    OPENCODE_MODEL: str = os.getenv("OPENCODE_MODEL", "deepseek-v4-flash-free")
+    OPENCODE_MODEL: str = os.getenv("OPENCODE_MODEL", "laguna-s-2.1-free")
+    # Tried in order when the primary is unavailable. Free models on this
+    # shared gateway fail individually, transiently, and without notice:
+    # measured against the real prompt, the same model returned 200 and 503
+    # on alternating calls, and the previous default
+    # (deepseek-v4-flash-free) still appears in /models while its provider
+    # answers "Model is unavailable". One dead model must not take the
+    # feature down, so we walk the list. All entries verified free.
+    OPENCODE_FALLBACK_MODELS: list[str] = [
+        m.strip()
+        for m in os.getenv(
+            "OPENCODE_FALLBACK_MODELS",
+            "nemotron-3-ultra-free,ling-3.0-flash-fin-free,hy3-free,nemotron-3.5-lightning-free",
+        ).split(",")
+        if m.strip()
+    ]
+    # Per-attempt timeout. A healthy model answers this prompt in ~5s; a dead
+    # one hangs until cut off, so the cap is what keeps the walk affordable.
+    OPENCODE_TIMEOUT_S: float = float(os.getenv("OPENCODE_TIMEOUT_S", "20"))
+    # Whole-call budget across every attempt. Bounds worst-case latency so a
+    # run of unhealthy models can't leave the user waiting minutes.
+    OPENCODE_BUDGET_S: float = float(os.getenv("OPENCODE_BUDGET_S", "50"))
     OPENCODE_BASE_URL: str = os.getenv("OPENCODE_BASE_URL", "https://opencode.ai/zen/v1")
 
     # Gemini (compose an entire approval automation from a prompt). REST API.

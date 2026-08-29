@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { CheckCircle, XCircle, Loader2, PenLine, FileCheck2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/brand-logo'
+import { RequestContextCard } from '@/components/request-context-card'
 import { getPublicRequest, type PublicRequest } from '@/lib/api'
 
 const DocumentEditor = dynamic(() => import('@/components/document-editor/document-editor'), { ssr: false })
@@ -41,7 +42,7 @@ export default function ActionContent() {
     setStatus('loading')
 
     try {
-      // POST (not GET) so recording a decision is never a side-effecting GET —
+      // POST (not GET) so recording a decision is never a side-effecting GET;
       // passive email link-scanners can't trip it. Backend reads form fields.
       const body = new URLSearchParams({
         token,
@@ -75,9 +76,13 @@ export default function ActionContent() {
         <BrandLogo href="/" />
       </div>
 
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-sm">
         {status === 'form' && (
           <div className="space-y-5">
+            {/* Full request context, so deciding never requires going back to
+                the email. Everything here was already in that email. */}
+            {req && <RequestContextCard req={req} />}
+
             <div>
               <h1 className="text-xl font-heading font-semibold text-foreground">
                 {isApprove ? 'Approve this request?' : 'Reject this request?'}

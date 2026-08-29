@@ -6,6 +6,8 @@ export interface ApprovalRequest {
   id: string
   user_id: string
   requester_email: string | null
+  sender_email: string | null
+  sender_name: string | null
   approver_email: string | null
   title: string | null
   message: string | null
@@ -13,7 +15,6 @@ export interface ApprovalRequest {
   feedback: string | null
   viewed_at: string | null
   view_count: number
-  token: string
   status: 'draft' | 'scheduled' | 'pending' | 'approved' | 'rejected' | 'ignored'
   scheduled_send_at: string | null
   sent_at: string | null
@@ -37,6 +38,9 @@ export interface PublicRequest {
   message: string | null
   file_url: string | null
   status: string
+  requester: string | null
+  deadline: string | null
+  sent_at: string | null
 }
 
 /** Public (token-only) request info for the receiver action page. */
@@ -180,6 +184,15 @@ export interface ReminderPlan {
   reminders: Reminder[]
 }
 
+/** The browser's IANA zone, e.g. "Asia/Manila". Undefined on the server. */
+export function localTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null
+  } catch {
+    return null
+  }
+}
+
 export async function generateReminderPlan(
   intent: string,
   sentAt?: string | null,
@@ -191,7 +204,9 @@ export async function generateReminderPlan(
   const response = await fetch(`${BACKEND_URL}/api/reminders/generate`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ intent, sent_at: sentAt, deadline }),
+    // A clock time in the plan ("9 am") is resolved against this zone, not the
+    // server's. The backend region must never influence what "9 am" means.
+    body: JSON.stringify({ intent, sent_at: sentAt, deadline, timezone: localTimeZone() }),
   })
   if (!response.ok) {
     const err = await response.json().catch(() => ({}))

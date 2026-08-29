@@ -111,7 +111,7 @@ async def send_approval_email(
 
     When ``is_followup`` is set, ``reminder`` (a request_reminders row or the
     get_due_reminders projection) drives the subject prefix and urgency banner,
-    which are computed dynamically from the live time window — no hardcoded
+    which are computed dynamically from the live time window, with no hardcoded
     day values, so any reminder schedule renders correct copy.
     """
     approve_url = (
@@ -124,6 +124,14 @@ async def send_approval_email(
         or record.get("sender_email")
         or record.get("requester_email")
         or record["user_id"][:8]
+    )
+    # Mail clients auto-linkify a bare address and restyle it with their own
+    # link color, which reads as blue-on-navy in the header. Supplying our own
+    # anchor keeps the client from injecting one.
+    requester_link = (
+        f'<a href="mailto:{requester_display}" style="color: #ffffff; text-decoration: none;">{requester_display}</a>'
+        if "@" in str(requester_display)
+        else f'<span style="color: #ffffff;">{requester_display}</span>'
     )
     # A reminder may override the body copy with its own custom message.
     body_text = (reminder or {}).get("custom_message") or record.get("message")
@@ -211,10 +219,10 @@ async def send_approval_email(
         <div style="background: #33436a; padding: 24px 0;">
             <div style="max-width: 600px; margin: 0 auto; padding: 0 24px;">
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                    <td style="vertical-align: middle;"><img src="{settings.FRONTEND_URL}/yesdrop-icon.png" width="32" height="32" alt="" style="display: block; border-radius: 8px;" /></td>
-                    <td style="vertical-align: middle; padding-left: 10px;"><span style="color: white; font-size: 22px; font-weight: 700; letter-spacing: -0.01em;">YesDrop</span></td>
+                    <td style="vertical-align: middle;"><img src="{settings.EMAIL_ASSET_BASE_URL}/yesdrop-icon.png" width="32" height="32" alt="YesDrop" style="display: block; border-radius: 8px; border: 0; outline: none; text-decoration: none;" /></td>
+                    <td style="vertical-align: middle; padding-left: 10px;"><span style="color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.01em;">YesDrop</span></td>
                 </tr></table>
-                <p style="color: rgba(255,255,255,0.75); margin: 10px 0 0 0; font-size: 14px;">Approval request from {requester_display}</p>
+                <p style="color: rgba(255,255,255,0.75); margin: 10px 0 0 0; font-size: 14px;">Approval request from {requester_link}</p>
             </div>
         </div>
 
@@ -230,10 +238,22 @@ async def send_approval_email(
 
             <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; margin: 32px 0;">
                 <p style="color: #6b7280; font-size: 13px; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 0.5px;">What do you want to do?</p>
-                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                    <a href="{approve_url}" style="flex: 1; display: inline-block; background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; font-size: 14px; transition: background 0.2s;">✓ Approve</a>
-                    <a href="{reject_url}" style="flex: 1; display: inline-block; background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; text-align: center; font-size: 14px; transition: background 0.2s;">✗ Reject</a>
-                </div>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 16px;"><tr>
+                    <td style="padding-right: 6px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+                            <td align="center" bgcolor="#16a34a" style="border-radius: 6px;">
+                                <a href="{approve_url}" style="display: block; padding: 13px 24px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px;">&#10003; Approve</a>
+                            </td>
+                        </tr></table>
+                    </td>
+                    <td style="padding-left: 6px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+                            <td align="center" bgcolor="#dc2626" style="border-radius: 6px;">
+                                <a href="{reject_url}" style="display: block; padding: 13px 24px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px;">&#10007; Reject</a>
+                            </td>
+                        </tr></table>
+                    </td>
+                </tr></table>
                 <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">Or reply to this email to provide feedback</p>
             </div>
 
@@ -385,7 +405,7 @@ class ApprovalRequestService:
         requester_email = await get_user_email(user_id)
 
         # Validate the optional sender identity: only honor an address that
-        # actually belongs to this user (their auth email), else ignore it — an
+        # actually belongs to this user (their auth email), else ignore it, because an
         # unverified reply-to/CC would let a user spoof a third party.
         # NOTE: not persisted (no sender_email column yet), so this reply-to/CC
         # applies to immediate Brevo sends only; scheduled/reminder sends would
@@ -493,7 +513,7 @@ class ApprovalRequestService:
                 raise HTTPException(
                     502,
                     detail={
-                        "message": "We couldn't send the email. Reconnect your Gmail in Settings, then try again — your request was saved as a draft.",
+                        "message": "We couldn't send the email. Reconnect your Gmail in Settings, then try again. Your request was saved as a draft.",
                         "code": "send_failed",
                     },
                 )
@@ -810,6 +830,15 @@ class ApprovalRequestService:
             "message": req.get("message"),
             "file_url": req.get("file_url"),
             "status": req["status"],
+            # Same display precedence as the email header, so the action page
+            # names the requester exactly as the email did.
+            "requester": (
+                req.get("sender_name")
+                or req.get("sender_email")
+                or req.get("requester_email")
+            ),
+            "deadline": req.get("deadline"),
+            "sent_at": req.get("sent_at"),
         }
 
     @staticmethod
@@ -872,7 +901,7 @@ class ApprovalRequestService:
 
         old_status = req["status"]
         if old_status in ("approved", "rejected"):
-            # Already decided — show the recorded outcome, don't mutate or re-notify.
+            # Already decided: show the recorded outcome, don't mutate or re-notify.
             return old_status, _result_page(old_status, already=True)
         if old_status != "pending":
             # draft / scheduled / ignored are not actionable from the email link.

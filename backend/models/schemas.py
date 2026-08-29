@@ -25,6 +25,9 @@ class ReminderPlanRequest(BaseModel):
     intent: str
     sent_at: str | None = None  # ISO; when the request will be sent (default: now)
     deadline: str | None = None  # ISO; the response deadline, if already chosen
+    # IANA zone of the person writing the plan, e.g. "Asia/Manila". A clock
+    # time like "9 am" is meaningless without one; everything is stored UTC.
+    timezone: str | None = None
 
 
 class ReminderPlanResponse(BaseModel):
@@ -130,7 +133,6 @@ class ApprovalRequestResponse(BaseModel):
     feedback: str | None  # Feedback/comments from approver
     viewed_at: datetime | None = None  # Timestamp of first email open
     view_count: int = 0  # Total number of email opens
-    token: str
     status: str
     scheduled_send_at: datetime | None
     sent_at: datetime | None
@@ -146,12 +148,20 @@ class ApprovalRequestResponse(BaseModel):
 
 
 class PublicRequest(BaseModel):
-    """Minimal request info exposed to the unauthenticated action page (by token)."""
+    """Request context exposed to the unauthenticated action page (by token).
+
+    Everything here already appears in the approval email the holder of this
+    token received, so surfacing it costs no additional disclosure. Internal
+    fields (user_id, token, reminder schedule) stay out.
+    """
 
     title: str | None = None
     message: str | None = None
     file_url: str | None = None
     status: str
+    requester: str | None = None
+    deadline: str | None = None
+    sent_at: str | None = None
 
 
 class DailyLimitResponse(BaseModel):

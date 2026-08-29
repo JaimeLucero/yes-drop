@@ -72,7 +72,6 @@ def to_response(record: dict) -> "ApprovalRequestResponse":
         feedback=feedback,
         viewed_at=viewed_at,
         view_count=view_count,
-        token=record["token"],
         status=record["status"],
         scheduled_send_at=record.get("scheduled_send_at"),
         sent_at=record.get("sent_at"),
@@ -181,7 +180,7 @@ class ApprovalRequestRepository:
 
         The ``.eq("status", "scheduled")`` filter turns the UPDATE into a claim:
         Postgres re-checks the predicate under a row lock, so two overlapping
-        cron invocations cannot both send — only the winner gets a row back.
+        cron invocations cannot both send; only the winner gets a row back.
         Returns the updated row if THIS call claimed it, else None.
         """
         data["updated_at"] = datetime.now(timezone.utc).isoformat()

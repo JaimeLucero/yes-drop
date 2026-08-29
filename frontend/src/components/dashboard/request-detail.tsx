@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
 import {
   X,
@@ -10,7 +11,6 @@ import {
   Trash2,
   Paperclip,
   Eye,
-  ExternalLink,
   Bell,
   FileCheck2,
   Mail,
@@ -20,6 +20,7 @@ import {
 import type { ApprovalRequest } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from './status-meta'
+import { ApprovalPreview } from './approval-preview'
 import { AnalyticsBand } from './analytics-band'
 import { DailyLimitIndicator } from '@/components/daily-limit-indicator'
 import { cn } from '@/lib/utils'
@@ -82,7 +83,7 @@ export function RequestDetail({ request, onClose, onEdit, onSchedule, onSendNow,
   const isScheduled = request.status === 'scheduled'
   const isModifiable = request.status === 'draft' || isScheduled
   const isSent = ['pending', 'approved', 'rejected', 'ignored'].includes(request.status)
-  const actionUrl = `/action?token=${encodeURIComponent(request.token)}&action=approve`
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   return (
     <div className="flex h-full flex-col">
@@ -254,16 +255,19 @@ export function RequestDetail({ request, onClose, onEdit, onSchedule, onSendNow,
             </Button>
           </div>
         ) : (
-          <a
-            href={actionUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
           >
-            <ExternalLink className="h-4 w-4" /> Preview approval page
-          </a>
+            <Eye className="h-4 w-4" /> Preview approval page
+          </button>
         )}
       </div>
+
+      {previewOpen && (
+        <ApprovalPreview request={request} onClose={() => setPreviewOpen(false)} />
+      )}
     </div>
   )
 }
