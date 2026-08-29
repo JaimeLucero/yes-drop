@@ -37,6 +37,7 @@ export function ReminderPlanner({
 }: ReminderPlannerProps) {
   const [deadlineOpen, setDeadlineOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  const [editIndex, setEditIndex] = useState<number | null>(null)
   const [intent, setIntent] = useState('')
   const [generating, setGenerating] = useState(false)
 
@@ -89,10 +90,27 @@ export function ReminderPlanner({
     }
   }
 
+  function kindFor(iso: string): Reminder['kind'] {
+    return deadlineDateTime && new Date(iso) < new Date(deadlineDateTime)
+      ? 'before_deadline'
+      : 'after_sending'
+  }
+
   function addManual(iso: string) {
-    const kind: Reminder['kind'] =
-      deadlineDateTime && new Date(iso) < new Date(deadlineDateTime) ? 'before_deadline' : 'after_sending'
-    onRemindersChange(sortByTime([...reminders, { kind, send_at: iso }]))
+    onRemindersChange(sortByTime([...reminders, { kind: kindFor(iso), send_at: iso }]))
+  }
+
+  /** Retime an existing reminder, keeping any custom message it carries. */
+  function editManual(iso: string) {
+    if (editIndex === null) return
+    onRemindersChange(
+      sortByTime(
+        reminders.map((r, i) =>
+          i === editIndex ? { ...r, kind: kindFor(iso), send_at: iso } : r
+        )
+      )
+    )
+    setEditIndex(null)
   }
 
   return (
@@ -193,14 +211,19 @@ export function ReminderPlanner({
                 className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
               >
                 <Bell className="h-4 w-4 shrink-0 text-foreground/40" />
-                <div className="flex-1">
+                <button
+                  type="button"
+                  onClick={() => setEditIndex(i)}
+                  className="flex-1 rounded text-left transition-colors hover:text-primary"
+                  aria-label={`Edit reminder for ${format(new Date(r.send_at), 'EEE, MMM d • p')}`}
+                >
                   <span className="block text-sm font-medium text-foreground">
                     {format(new Date(r.send_at), 'EEE, MMM d • p')}
                   </span>
                   <span className="block text-xs text-foreground/50">
                     {r.kind === 'before_deadline' ? 'Before deadline' : 'After sending'}
                   </span>
-                </div>
+                </button>
                 <button
                   type="button"
                   onClick={() => onRemindersChange(reminders.filter((_, idx) => idx !== i))}
@@ -228,6 +251,15 @@ export function ReminderPlanner({
         onOpenChange={setAddOpen}
         onDateTimeSelect={addManual}
         label="Add a reminder"
+        minDate={baseDate}
+        maxDate={deadlineDateTime ? new Date(deadlineDateTime) : undefined}
+      />
+      <DateTimePickerModal
+        open={editIndex !== null}
+        onOpenChange={(o) => !o && setEditIndex(null)}
+        onDateTimeSelect={editManual}
+        initialDateTime={editIndex !== null ? reminders[editIndex]?.send_at ?? null : null}
+        label="Edit reminder"
         minDate={baseDate}
         maxDate={deadlineDateTime ? new Date(deadlineDateTime) : undefined}
       />

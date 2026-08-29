@@ -176,6 +176,7 @@ async def generate_reminder_plan(
         data.intent,
         data.sent_at,
         data.deadline,
+        data.timezone,
     )
 
 
@@ -254,7 +255,7 @@ def _action_error_response(e: HTTPException):
 async def action(token: str, action: str):
     """Render the approve/reject confirmation interstitial (public endpoint).
 
-    A decision is only recorded via the POST from this page — passive email
+    A decision is only recorded via the POST from this page; passive email
     link-scanners that GET the URL can't complete the action.
     """
     try:
