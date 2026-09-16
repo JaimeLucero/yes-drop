@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="June 2026">
+    <LegalPage title="Privacy Policy" updated="September 2026">
       <p>
         This policy explains what information YesDrop collects when you use the service, how we use it, and the
         choices you have. By using YesDrop you agree to the practices described here.
@@ -32,6 +32,88 @@ export default function PrivacyPage() {
       <p>
         When you send a request, we email the approver on your behalf so they can approve or reject it. Approvers
         do not need a YesDrop account and we only use their address to deliver that request and any reminders.
+      </p>
+
+      <h2>Google user data</h2>
+      <p>
+        YesDrop lets you sign in with Google and send approval requests from your own Gmail account. This section
+        explains what Google user data we access, how we use and store it, and with whom we share, transfer, or
+        disclose it.
+      </p>
+      <p>
+        <strong>What we access.</strong> When you sign in with Google or connect Gmail, Google shares your name,
+        email address, and profile picture with us. With your permission, we also receive an authorization token for
+        the Gmail send scope (gmail.send), which lets YesDrop send email from your Gmail account. This scope only
+        allows sending. YesDrop cannot read, search, change, or delete the messages in your mailbox.
+      </p>
+      <p>
+        <strong>How we use it.</strong> We use your name and email address to create and secure your account, to
+        show them to you in the app, and to identify you as the sender of your approval requests. We use the Gmail
+        token only to send the approval requests and reminders that you create or schedule, from your Gmail address,
+        to the approvers you choose. We keep the Gmail message and thread IDs of those emails so that reminders stay
+        in the same conversation.
+      </p>
+      <p>
+        <strong>How we store and protect it.</strong> Your account details are stored in our database. The Gmail
+        token is encrypted before it is stored and is decrypted only on our servers at the moment an email is sent.
+        Data is encrypted in transit between your browser, our servers, and our providers.
+      </p>
+      <p>
+        <strong>With whom we share, transfer, or disclose it.</strong> We share Google user data only as needed to
+        run YesDrop, and only with the following parties:
+      </p>
+      <ul className="list-disc space-y-2 pl-6">
+        <li>
+          <strong>Google</strong>, which delivers the emails you send through YesDrop using the Gmail API.
+        </li>
+        <li>
+          <strong>Your approvers</strong>, who see your name and email address as the sender of each request you send
+          them, along with the request content you write. Their replies go to your own inbox.
+        </li>
+        <li>
+          <strong>Supabase</strong>, which hosts our database and sign-in service, and stores your account details and
+          the encrypted Gmail token.
+        </li>
+        <li>
+          <strong>Render</strong>, which hosts the YesDrop servers that process your data to send email.
+        </li>
+        <li>
+          <strong>Vercel</strong>, which hosts the YesDrop website and app interface.
+        </li>
+        <li>
+          <strong>Brevo</strong>, our email delivery provider, which receives your name and email address to send you
+          account and status notification emails, and to deliver approval requests that are not sent through Gmail.
+        </li>
+      </ul>
+      <p>
+        These providers receive Google user data only so they can provide their service to YesDrop. We may also
+        disclose Google user data when the law requires it, when it is necessary to protect the security of YesDrop
+        and its users (for example, to investigate abuse), or as part of a merger, acquisition, or sale of assets, and
+        in that last case only after obtaining your explicit consent first. We do not share Google user data with
+        anyone else.
+      </p>
+      <p>
+        <strong>What we never do.</strong> We do not sell Google user data. We do not use or transfer it for
+        advertising, and we do not give it to data brokers or information resellers. We do not use Google user data,
+        including data obtained through Google Workspace APIs, to develop, improve, or train generalized or
+        non-personalized AI or machine learning models. The AI features in YesDrop receive only the text you type
+        into them, never your Google user data. No person at YesDrop reads your Google user data unless you give us
+        permission, it is necessary for security purposes, or the law requires it.
+      </p>
+      <p>
+        <strong>Retention and deletion.</strong> We keep your Google account details for as long as your YesDrop
+        account exists. You can disconnect Gmail at any time in Settings, which deletes the stored Gmail token. You
+        can also remove YesDrop&apos;s access from your{' '}
+        <a href="https://myaccount.google.com/permissions">Google Account permissions page</a>. When your YesDrop
+        account is deleted, your Google account details and the Gmail token are deleted with it.
+      </p>
+      <p>
+        <strong>Limited Use.</strong> YesDrop&apos;s use and transfer to any other app of information received from
+        Google APIs will adhere to the{' '}
+        <a href="https://developers.google.com/terms/api-services-user-data-policy">
+          Google API Services User Data Policy
+        </a>
+        , including the Limited Use requirements.
       </p>
 
       <h2>Data storage and security</h2>
