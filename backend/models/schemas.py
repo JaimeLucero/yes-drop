@@ -19,24 +19,6 @@ class ReminderInput(BaseModel):
     custom_message: str | None = None
 
 
-class ReminderPlanRequest(BaseModel):
-    """Ask opencode to turn a natural-language intent into a reminder schedule."""
-
-    intent: str
-    sent_at: str | None = None  # ISO; when the request will be sent (default: now)
-    deadline: str | None = None  # ISO; the response deadline, if already chosen
-    # IANA zone of the person writing the plan, e.g. "Asia/Manila". A clock
-    # time like "9 am" is meaningless without one; everything is stored UTC.
-    timezone: str | None = None
-
-
-class ReminderPlanResponse(BaseModel):
-    """A proposed (unsaved) schedule the user verifies, with absolute times."""
-
-    deadline: str | None = None  # absolute ISO (may be derived from intent)
-    reminders: list[ReminderInput] = []
-
-
 class ComposeRequest(BaseModel):
     """Turn a natural-language prompt into a full approval automation (Gemini)."""
 

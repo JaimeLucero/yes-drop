@@ -179,42 +179,6 @@ export async function disconnectGoogle(): Promise<{ success: boolean }> {
   return response.json()
 }
 
-export interface ReminderPlan {
-  deadline: string | null
-  reminders: Reminder[]
-}
-
-/** The browser's IANA zone, e.g. "Asia/Manila". Undefined on the server. */
-export function localTimeZone(): string | null {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || null
-  } catch {
-    return null
-  }
-}
-
-export async function generateReminderPlan(
-  intent: string,
-  sentAt?: string | null,
-  deadline?: string | null
-): Promise<ReminderPlan> {
-  const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('Not authenticated')
-  const response = await fetch(`${BACKEND_URL}/api/reminders/generate`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-    // A clock time in the plan ("9 am") is resolved against this zone, not the
-    // server's. The backend region must never influence what "9 am" means.
-    body: JSON.stringify({ intent, sent_at: sentAt, deadline, timezone: localTimeZone() }),
-  })
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    throw new Error(err.detail || 'Could not generate a schedule')
-  }
-  return response.json()
-}
-
 export interface ComposeResult {
   approver_email: string | null
   title: string

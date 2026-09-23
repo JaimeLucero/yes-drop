@@ -19,7 +19,6 @@ from services.requests import service
 from services.email import email_service
 from services.database import repository
 from services.gmail_service import gmail_service
-from services.opencode_service import opencode_service
 from services.gemini_service import gemini_service
 from services.ai_rate_limit import enforce_ai_rate_limit
 from models.schemas import (
@@ -33,8 +32,6 @@ from models.schemas import (
     ScheduleRequest,
     GoogleConnectRequest,
     GoogleStatusResponse,
-    ReminderPlanRequest,
-    ReminderPlanResponse,
     PublicRequest,
 )
 
@@ -162,22 +159,6 @@ async def google_disconnect(user_id: str = Depends(get_current_user)):
     """Disconnect the user's Gmail sending account."""
     gmail_service.disconnect(user_id)
     return {"success": True}
-
-
-@app.post("/api/reminders/generate", response_model=ReminderPlanResponse)
-async def generate_reminder_plan(
-    data: ReminderPlanRequest,
-    user_id: str = Depends(get_current_user),
-):
-    """Generate a reminder schedule from a natural-language plan (opencode)."""
-    # Blocking httpx call to the AI provider; keep it off the event loop.
-    return await asyncio.to_thread(
-        opencode_service.generate_reminder_plan,
-        data.intent,
-        data.sent_at,
-        data.deadline,
-        data.timezone,
-    )
 
 
 @app.post("/api/compose", response_model=ComposeResponse)

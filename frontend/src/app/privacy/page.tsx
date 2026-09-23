@@ -28,6 +28,21 @@ export default function PrivacyPage() {
         status of each request, and keep your account secure. We do not sell your personal information.
       </p>
 
+      <h2>AI features</h2>
+      <p>
+        YesDrop has one AI feature: composing a draft approval request from a short prompt you write. It calls the{' '}
+        <strong>Google Gemini API</strong>, on Gemini&apos;s free tier. Only the text you type into that box, plus the
+        scheduling details you give it, is sent to Gemini. Your Gmail or Google Workspace data is never sent to
+        Gemini or to any other AI service, and is never used to train or improve any AI or machine learning model.
+      </p>
+      <p>
+        Because this runs on Gemini&apos;s free tier, Google&apos;s own terms apply to what you type: Google may use
+        the prompt text you submit and the draft it returns to improve its products, and human reviewers may read and
+        annotate that text after disconnecting it from your account and API key. Do not type sensitive or
+        confidential information into the compose box. This feature is optional; you can write and schedule an
+        approval request entirely by hand without it.
+      </p>
+
       <h2>Email to approvers</h2>
       <p>
         When you send a request, we email the approver on your behalf so they can approve or reject it. Approvers

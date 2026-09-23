@@ -2,9 +2,9 @@
 Turn a natural-language prompt into a full approval-email automation via Gemini.
 
 Gemini returns a strict JSON object of email content plus RELATIVE schedule
-offsets; we materialize absolute UTC send/deadline/reminder times server-side
-(reusing the opencode offset helpers). The user always reviews/edits the result
-in the form before anything is sent; this endpoint never sends email.
+offsets; we materialize absolute UTC send/deadline/reminder times server-side.
+The user always reviews/edits the result in the form before anything is sent;
+this endpoint never sends email.
 """
 
 import json
@@ -17,9 +17,29 @@ from fastapi import HTTPException
 
 from core.config import settings
 from models.schemas import ComposeResponse, ReminderInput
-from services.opencode_service import _apply_offset, _parse_dt
 
 logger = logging.getLogger(__name__)
+
+_OFFSET_RE = re.compile(r"^([+-])(\d+)([dhm])$")
+_UNIT = {"d": "days", "h": "hours", "m": "minutes"}
+
+
+def _parse_dt(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _apply_offset(base: datetime, offset: str) -> datetime:
+    m = _OFFSET_RE.match((offset or "").strip())
+    if not m:
+        raise ValueError(f"invalid offset: {offset!r}")
+    sign, num, unit = m.group(1), int(m.group(2)), m.group(3)
+    delta = timedelta(**{_UNIT[unit]: num})
+    return base + delta if sign == "+" else base - delta
 
 SYSTEM_PROMPT = (
     "You are an assistant that turns a short request into an email approval "

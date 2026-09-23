@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar, Sparkles, Plus, X, Bell } from 'lucide-react'
+import { Calendar, Plus, X, Bell } from 'lucide-react'
 import { format } from 'date-fns'
-import { toast } from 'sonner'
 import { DateTimePickerModal } from '@/components/date-time-picker-modal'
-import { generateReminderPlan, type Reminder } from '@/lib/api'
+import { type Reminder } from '@/lib/api'
 
 const DAY = 86_400_000
 
@@ -38,8 +37,6 @@ export function ReminderPlanner({
   const [deadlineOpen, setDeadlineOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [editIndex, setEditIndex] = useState<number | null>(null)
-  const [intent, setIntent] = useState('')
-  const [generating, setGenerating] = useState(false)
 
   const base = baseTime && baseTime.length ? baseTime : null
   const baseDate = base ? new Date(base) : new Date()
@@ -73,21 +70,6 @@ export function ReminderPlanner({
     // future-relative to the send time / deadline).
     rs = rs.filter((r) => new Date(r.send_at).getTime() < dl)
     onRemindersChange(sortByTime(rs))
-  }
-
-  async function generate() {
-    if (!intent.trim()) return
-    setGenerating(true)
-    try {
-      const plan = await generateReminderPlan(intent, base, deadlineDateTime || null)
-      if (plan.deadline) onDeadlineChange(plan.deadline)
-      onRemindersChange(sortByTime(plan.reminders || []))
-      toast.success(`Added ${plan.reminders?.length || 0} reminder${plan.reminders?.length === 1 ? '' : 's'}`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not generate a schedule')
-    } finally {
-      setGenerating(false)
-    }
   }
 
   function kindFor(iso: string): Reminder['kind'] {
@@ -162,29 +144,6 @@ export function ReminderPlanner({
         </div>
       </div>
 
-      {/* AI */}
-      <div className="rounded-lg border border-border bg-secondary/40 p-3">
-        <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-foreground">
-          <Sparkles className="h-4 w-4 text-primary" />
-          Describe your follow-up plan
-        </label>
-        <textarea
-          value={intent}
-          onChange={(e) => setIntent(e.target.value)}
-          rows={2}
-          placeholder="e.g. nudge them a day after sending, then again 12 hours before the deadline"
-          className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-foreground/40 focus:border-primary focus:outline-none"
-        />
-        <button
-          type="button"
-          onClick={generate}
-          disabled={generating || !intent.trim()}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-        >
-          {generating ? 'Generating…' : 'Generate reminders'}
-        </button>
-      </div>
-
       {/* Reminder list */}
       <div>
         <div className="mb-2 flex items-center justify-between">
@@ -201,7 +160,7 @@ export function ReminderPlanner({
         </div>
         {reminders.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-foreground/40">
-            No reminders. Pick a plan above, describe one, or add your own.
+            No reminders. Pick a plan above, or add your own.
           </p>
         ) : (
           <ul className="space-y-1.5">
