@@ -26,7 +26,8 @@ DEFAULT_MODEL_BY_PROVIDER = {
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
-ANTHROPIC_MAX_OUTPUT_TOKENS = 1024
+# Claude may think before answering and thinking tokens count toward this cap.
+ANTHROPIC_MAX_OUTPUT_TOKENS = 4096
 OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
 REQUEST_TIMEOUT_IN_SECONDS = 30
 
@@ -37,6 +38,10 @@ GEMINI_INVALID_KEY_MARKER = "API key not valid"
 KEY_REJECTED_MESSAGE = "Your AI provider rejected the key. Check it in Settings."
 RATE_LIMITED_MESSAGE = "Your AI provider is rate limiting this key. Try again shortly."
 COMPOSE_FAILED_MESSAGE = "Could not compose the automation. Try again."
+REFUSED_MESSAGE = "The AI declined this request. Try rewording it."
+CUT_OFF_MESSAGE = "The AI response was cut off. Try a shorter request."
+STOP_REASON_REFUSAL = "refusal"
+STOP_REASON_MAX_TOKENS = "max_tokens"
 
 
 def request_json_text(
@@ -83,7 +88,7 @@ def _call_anthropic(api_key: str, model: str, system_prompt: str, prompt: str) -
         {"x-api-key": api_key, "anthropic-version": ANTHROPIC_VERSION},
         body,
     )
-    return _read_reply(lambda: reply["content"][0]["text"])
+    return _read_anthropic_text(reply)
 
 
 def _call_openai(api_key: str, model: str, system_prompt: str, prompt: str) -> str:
@@ -137,8 +142,20 @@ def _http_error_for_status(provider: str, response: httpx.Response) -> HTTPExcep
     return HTTPException(502, COMPOSE_FAILED_MESSAGE)
 
 
+def _read_anthropic_text(reply: dict) -> str:
+    """Return the first text block; thinking blocks can precede it."""
+    stop_reason = reply.get("stop_reason")
+    if stop_reason == STOP_REASON_REFUSAL:
+        raise HTTPException(502, REFUSED_MESSAGE)
+    if stop_reason == STOP_REASON_MAX_TOKENS:
+        raise HTTPException(502, CUT_OFF_MESSAGE)
+    return _read_reply(
+        lambda: next(block["text"] for block in reply["content"] if block.get("type") == "text")
+    )
+
+
 def _read_reply(read_text) -> str:
     try:
         return read_text()
-    except (KeyError, IndexError, TypeError):
+    except (KeyError, IndexError, TypeError, StopIteration):
         raise HTTPException(502, "AI returned an unreadable draft")

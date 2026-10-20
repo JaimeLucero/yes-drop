@@ -6,10 +6,25 @@ import { KeyRound, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { deleteAiSettings, fetchAiSettings, saveAiSettings, type AiProvider } from '@/lib/api'
 
-const PROVIDER_OPTIONS: { provider: AiProvider; label: string; defaultModel: string }[] = [
-  { provider: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-2.5-flash' },
-  { provider: 'anthropic', label: 'Anthropic Claude', defaultModel: 'claude-haiku-5-5' },
-  { provider: 'openai', label: 'OpenAI', defaultModel: 'gpt-4o-mini' },
+const PROVIDER_OPTIONS: { provider: AiProvider; label: string; defaultModel: string; getKeyUrl: string }[] = [
+  {
+    provider: 'gemini',
+    label: 'Google Gemini',
+    defaultModel: 'gemini-2.5-flash',
+    getKeyUrl: 'https://aistudio.google.com/apikey',
+  },
+  {
+    provider: 'anthropic',
+    label: 'Anthropic Claude',
+    defaultModel: 'claude-haiku-5-5',
+    getKeyUrl: 'https://platform.claude.com/docs/en/get-api-key',
+  },
+  {
+    provider: 'openai',
+    label: 'OpenAI',
+    defaultModel: 'gpt-4o-mini',
+    getKeyUrl: 'https://platform.openai.com/api-keys',
+  },
 ]
 
 const AI_SETTINGS_QUERY_KEY = ['ai-settings']
@@ -51,16 +66,23 @@ export function AiProviderCard() {
     if (nextOption) setModel(nextOption.defaultModel)
   }
 
+  const selectedOption = PROVIDER_OPTIONS.find((option) => option.provider === provider) ?? PROVIDER_OPTIONS[0]
   const canSave = !saveMutation.isPending && apiKey.trim().length > 0 && model.trim().length > 0
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <section aria-labelledby="ai-provider-heading" className="rounded-xl border border-border bg-card p-5">
+      <h2 id="ai-provider-heading" className="font-heading text-lg font-semibold text-foreground">
+        AI provider
+      </h2>
+      <p className="mb-4 mt-1 text-sm text-muted-foreground">
+        Choose which AI writes your drafts. YesDrop has no AI account of its own, so you connect yours.
+      </p>
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
           <KeyRound className="h-5 w-5 text-muted-foreground" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">AI compose</p>
+          <p className="text-sm font-medium text-foreground">Compose with AI</p>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Checking…</p>
           ) : aiSettings?.configured ? (
@@ -119,6 +141,14 @@ export function AiProviderCard() {
             className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
           />
         </label>
+        <a
+          href={selectedOption.getKeyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-xs text-primary underline"
+        >
+          Get your {selectedOption.label} API key
+        </a>
         <p className="text-xs text-muted-foreground">
           Your key is encrypted and used only to run AI compose for you. Usage is billed to your own provider
           account. Emails, links and phone numbers are removed from your text before it is sent, but names are not,
@@ -132,6 +162,6 @@ export function AiProviderCard() {
           {saveMutation.isPending ? 'Saving…' : aiSettings?.configured ? 'Replace key' : 'Save key'}
         </button>
       </div>
-    </div>
+    </section>
   )
 }

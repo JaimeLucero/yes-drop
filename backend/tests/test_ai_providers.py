@@ -129,3 +129,39 @@ def test_network_failure_does_not_leak_key(monkeypatch, caplog):
 
     assert error.value.status_code == 502
     assert API_KEY not in caplog.text
+
+
+def test_anthropic_skips_leading_thinking_block(reply_with):
+    reply_with(
+        {
+            "stop_reason": "end_turn",
+            "content": [
+                {"type": "thinking", "thinking": "", "signature": "sig"},
+                {"type": "text", "text": '{"title": "T"}'},
+            ],
+        }
+    )
+
+    assert _request("anthropic") == '{"title": "T"}'
+
+
+@pytest.mark.parametrize(
+    "stop_reason, message",
+    [("refusal", providers.REFUSED_MESSAGE), ("max_tokens", providers.CUT_OFF_MESSAGE)],
+)
+def test_anthropic_incomplete_replies_get_a_clear_error(reply_with, stop_reason, message):
+    reply_with({"stop_reason": stop_reason, "content": [{"type": "text", "text": "{"}]})
+
+    with pytest.raises(HTTPException) as error:
+        _request("anthropic")
+
+    assert error.value.detail == message
+
+
+def test_anthropic_without_text_block_is_unreadable(reply_with):
+    reply_with({"stop_reason": "end_turn", "content": [{"type": "thinking", "thinking": ""}]})
+
+    with pytest.raises(HTTPException) as error:
+        _request("anthropic")
+
+    assert error.value.status_code == 502
