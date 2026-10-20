@@ -30,17 +30,29 @@ export default function PrivacyPage() {
 
       <h2>AI features</h2>
       <p>
-        YesDrop has one AI feature: composing a draft approval request from a short prompt you write. It calls the{' '}
-        <strong>Google Gemini API</strong>, on Gemini&apos;s free tier. Only the text you type into that box, plus the
-        scheduling details you give it, is sent to Gemini. Your Gmail or Google Workspace data is never sent to
-        Gemini or to any other AI service, and is never used to train or improve any AI or machine learning model.
+        YesDrop has one optional AI feature: composing a draft approval request from a short prompt you write. It
+        only works if you connect your own account with an AI provider. You choose one of{' '}
+        <strong>Google Gemini</strong>, <strong>Anthropic Claude</strong>, or <strong>OpenAI</strong> and paste your own
+        API key in Settings. YesDrop does not supply an AI account, and usage is billed to you by that provider under
+        the plan you hold with them.
       </p>
       <p>
-        Because this runs on Gemini&apos;s free tier, Google&apos;s own terms apply to what you type: Google may use
-        the prompt text you submit and the draft it returns to improve its products, and human reviewers may read and
-        annotate that text after disconnecting it from your account and API key. Do not type sensitive or
-        confidential information into the compose box. This feature is optional; you can write and schedule an
-        approval request entirely by hand without it.
+        Your API key is encrypted before it is stored and is decrypted only on our servers at the moment you run
+        compose. It is never shown back to you or sent to your browser, and you can remove it at any time in Settings,
+        which deletes it.
+      </p>
+      <p>
+        Only the text you type into the compose box is sent to the provider you chose. Before it is sent, our servers
+        remove every email address, web link, and phone number from that text and replace each with a placeholder, then
+        put the originals back into the draft after the provider replies. We cannot automatically detect names, so do
+        not type sensitive or confidential information into the compose box. We never send an AI provider your Google
+        account name, email address, profile picture, Gmail token, Gmail messages, approver lists, or any other Google
+        user data. Google user data is never used to train or improve any AI or machine learning model.
+      </p>
+      <p>
+        The provider you choose handles that text under its own terms and your own plan, and some plans allow the
+        provider to use submitted text to improve its products. Check your provider&apos;s terms before connecting a
+        key. This feature is optional; you can write and schedule an approval request entirely by hand without it.
       </p>
 
       <h2>Email to approvers</h2>

@@ -1,27 +1,27 @@
 """
-Turn a natural-language prompt into a full approval-email automation via Gemini.
+Turn a natural-language prompt into a full approval-email automation using the
+AI provider and API key the user configured.
 
-Gemini returns a strict JSON object of email content plus RELATIVE schedule
+The provider returns a JSON object of email content plus RELATIVE schedule
 offsets; we materialize absolute UTC send/deadline/reminder times server-side.
 The user always reviews/edits the result in the form before anything is sent;
 this endpoint never sends email.
 """
 
 import json
-import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-import httpx
 from fastapi import HTTPException
 
-from core.config import settings
 from models.schemas import ComposeResponse, ReminderInput
-
-logger = logging.getLogger(__name__)
+from services.ai_provider_keys import AiProviderCredentials
+from services.ai_providers import request_json_text
 
 _OFFSET_RE = re.compile(r"^([+-])(\d+)([dhm])$")
 _UNIT = {"d": "days", "h": "hours", "m": "minutes"}
+MAX_CLIENT_CLOCK_SKEW = timedelta(days=1)
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -38,8 +38,58 @@ def _apply_offset(base: datetime, offset: str) -> datetime:
     if not m:
         raise ValueError(f"invalid offset: {offset!r}")
     sign, num, unit = m.group(1), int(m.group(2)), m.group(3)
-    delta = timedelta(**{_UNIT[unit]: num})
-    return base + delta if sign == "+" else base - delta
+    try:
+        delta = timedelta(**{_UNIT[unit]: num})
+        return base + delta if sign == "+" else base - delta
+    except OverflowError:
+        raise ValueError(f"offset out of range: {offset!r}")
+
+
+def _parse_client_now(client_now: str | None) -> None:
+    """Reject an unparseable or implausible client clock before it seeds scheduling."""
+    if not client_now:
+        return
+    try:
+        parsed_now = _parse_dt(client_now)
+    except ValueError:
+        raise HTTPException(400, "Invalid current time")
+    clock_skew = abs(parsed_now - datetime.now(timezone.utc))
+    if clock_skew > MAX_CLIENT_CLOCK_SKEW:
+        raise HTTPException(400, "Your device clock looks wrong. Fix it and try again.")
+
+
+_CONTACT_DETAIL_PATTERNS = (
+    ("EMAIL", re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")),
+    ("URL", re.compile(r"(?:https?://|www\.)[^\s)]+")),
+    ("PHONE", re.compile(r"\+?\d[\d\s().-]{7,}\d")),
+)
+
+
+@dataclass(frozen=True)
+class RedactedPrompt:
+    text: str
+    original_by_placeholder: dict[str, str]
+
+
+def redact_contact_details(prompt: str) -> RedactedPrompt:
+    """Replace emails, URLs and phone numbers with placeholders so none reach the AI provider."""
+    original_by_placeholder: dict[str, str] = {}
+    redacted_text = prompt
+    for label, pattern in _CONTACT_DETAIL_PATTERNS:
+        def replace_with_placeholder(match: re.Match) -> str:
+            placeholder = f"[{label}_{len(original_by_placeholder) + 1}]"
+            original_by_placeholder[placeholder] = match.group(0)
+            return placeholder
+
+        redacted_text = pattern.sub(replace_with_placeholder, redacted_text)
+    return RedactedPrompt(redacted_text, original_by_placeholder)
+
+
+def restore_contact_details(text: str, original_by_placeholder: dict[str, str]) -> str:
+    for placeholder, original in original_by_placeholder.items():
+        text = text.replace(placeholder, original)
+    return text
+
 
 SYSTEM_PROMPT = (
     "You are an assistant that turns a short request into an email approval "
@@ -53,14 +103,16 @@ SYSTEM_PROMPT = (
     "Rules:\n"
     "- title: concise, no 'Approval Request:' prefix (the app adds one).\n"
     "- message: polite, specific, ready to send; do not invent facts.\n"
-    "- approver_email: copy the address if the prompt gives one, else empty string.\n"
+    "- approver_email: copy a placeholder such as [EMAIL_1] exactly if the prompt "
+    "contains one, else empty string. Never invent an address.\n"
+    "- Keep placeholders such as [EMAIL_1], [URL_1], [PHONE_1] exactly as written.\n"
     "- deadline_offset is POSITIVE relative to send time (default +3d if unstated).\n"
     "- scheduled_offset: empty string to send now, else POSITIVE relative to now.\n"
     "- after_sending offsets are POSITIVE; before_deadline offsets are NEGATIVE.\n"
     "- 0 to 5 reminders, ordered sensibly. Return JSON only."
 )
 
-# Gemini structured-output schema (OpenAPI subset). Forces clean JSON.
+# Gemini structured-output schema (OpenAPI subset). Other providers rely on the system prompt.
 _RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -89,58 +141,41 @@ _RESPONSE_SCHEMA = {
 }
 
 
-class GeminiService:
+class ComposeService:
     """Compose a full approval automation from a natural-language prompt."""
 
-    def compose(self, prompt: str, now: str | None = None) -> ComposeResponse:
-        if not settings.GEMINI_API_KEY:
-            raise HTTPException(503, "AI compose is not configured")
+    def compose(
+        self, credentials: AiProviderCredentials, prompt: str, now: str | None = None
+    ) -> ComposeResponse:
         if not (prompt or "").strip():
             raise HTTPException(400, "Describe the approval you want to send first")
 
-        raw = self._call_gemini(prompt)
-        plan = self._extract_json(raw)
-        return self._materialize(plan, now)
-
-    def _call_gemini(self, prompt: str) -> str:
-        url = (
-            f"{settings.GEMINI_BASE_URL.rstrip('/')}"
-            f"/models/{settings.GEMINI_MODEL}:generateContent"
+        _parse_client_now(now)
+        redacted_prompt = redact_contact_details(prompt)
+        raw = request_json_text(
+            provider=credentials.provider,
+            api_key=credentials.api_key,
+            model=credentials.model,
+            system_prompt=SYSTEM_PROMPT,
+            prompt=redacted_prompt.text,
+            response_schema=_RESPONSE_SCHEMA,
         )
-        try:
-            resp = httpx.post(
-                url,
-                params={"key": settings.GEMINI_API_KEY},
-                headers={"Content-Type": "application/json"},
-                json={
-                    "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                    "generationConfig": {
-                        "temperature": 0.3,
-                        "responseMimeType": "application/json",
-                        "responseSchema": _RESPONSE_SCHEMA,
-                    },
-                },
-                timeout=30,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-        except httpx.HTTPStatusError as e:
-            if e.response is not None and e.response.status_code == 429:
-                logger.warning("Gemini quota exhausted (429)")
-                raise HTTPException(
-                    429,
-                    detail={
-                        "message": "AI is busy right now. Try again shortly, or fill the form in manually.",
-                        "scope": "provider",
-                    },
-                )
-            logger.error(f"Gemini call failed: {e}", exc_info=True)
-            raise HTTPException(502, "Could not compose the automation. Try again.")
-        except Exception as e:
-            logger.error(f"Gemini call failed: {e}", exc_info=True)
-            raise HTTPException(502, "Could not compose the automation. Try again.")
+        plan = self._extract_json(raw)
+        restored_plan = self._restore_plan(plan, redacted_prompt.original_by_placeholder)
+        return self._materialize(restored_plan, now)
+
+    @staticmethod
+    def _restore_plan(plan: dict, original_by_placeholder: dict[str, str]) -> dict:
+        def restore(value):
+            if isinstance(value, str):
+                return restore_contact_details(value, original_by_placeholder)
+            if isinstance(value, list):
+                return [restore(entry) for entry in value]
+            if isinstance(value, dict):
+                return {key: restore(entry) for key, entry in value.items()}
+            return value
+
+        return restore(plan)
 
     @staticmethod
     def _extract_json(raw: str) -> dict:
@@ -221,4 +256,4 @@ class GeminiService:
         )
 
 
-gemini_service = GeminiService()
+compose_service = ComposeService()

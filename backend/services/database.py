@@ -230,7 +230,7 @@ class ApprovalRequestRepository:
             logger.error(f"Error getting daily count: {e}")
             return 0
 
-    # ---- AI usage (rate limiting for the shared Gemini free-tier key) ----
+    # ---- AI usage (per-user rate limiting) ----
 
     @staticmethod
     def record_ai_usage(user_id: str, kind: str = "compose") -> None:
@@ -252,18 +252,6 @@ class ApprovalRequestRepository:
             return result.data if result.data else 0
         except Exception as e:
             logger.error(f"Error counting AI usage: {e}")
-            return 0
-
-    @staticmethod
-    def count_ai_usage_global(since_iso: str) -> int:
-        """All users' AI calls since a timestamp (shared-quota global limit)."""
-        try:
-            result = supabase.rpc(
-                "get_ai_usage_count_global", {"since_ts": since_iso}
-            ).execute()
-            return result.data if result.data else 0
-        except Exception as e:
-            logger.error(f"Error counting global AI usage: {e}")
             return 0
 
     @staticmethod

@@ -19,9 +19,15 @@ from services.requests import service
 from services.email import email_service
 from services.database import repository
 from services.gmail_service import gmail_service
-from services.gemini_service import gemini_service
+from services.compose_service import compose_service
+from services.ai_provider_keys import ai_provider_key_store
+from services.ai_providers import list_models
 from services.ai_rate_limit import enforce_ai_rate_limit
 from models.schemas import (
+    AiModelsRequest,
+    AiModelsResponse,
+    AiSettingsRequest,
+    AiSettingsResponse,
     ApprovalRequestCreate,
     ApprovalRequestDraft,
     ApprovalRequestUpdate,
@@ -161,18 +167,54 @@ async def google_disconnect(user_id: str = Depends(get_current_user)):
     return {"success": True}
 
 
+@app.get("/api/ai/settings", response_model=AiSettingsResponse)
+async def get_ai_settings(user_id: str = Depends(get_current_user)):
+    """Which AI provider the user connected. Never returns the key itself."""
+    return ai_provider_key_store.get_status(user_id)
+
+
+@app.put("/api/ai/settings", response_model=AiSettingsResponse)
+async def save_ai_settings(
+    data: AiSettingsRequest,
+    user_id: str = Depends(get_current_user),
+):
+    """Store the user's own AI provider key, encrypted, once the provider accepts it."""
+    await asyncio.to_thread(list_models, data.provider, data.api_key)
+    ai_provider_key_store.save(user_id, data.provider, data.model, data.api_key)
+    return ai_provider_key_store.get_status(user_id)
+
+
+@app.post("/api/ai/models", response_model=AiModelsResponse)
+async def list_ai_models(
+    data: AiModelsRequest,
+    user_id: str = Depends(get_current_user),
+):
+    """Verify a key with its provider and return the recent models it can use."""
+    model_ids = await asyncio.to_thread(list_models, data.provider, data.api_key)
+    return {"models": model_ids}
+
+
+@app.delete("/api/ai/settings")
+async def delete_ai_settings(user_id: str = Depends(get_current_user)):
+    """Remove the user's stored AI provider key."""
+    ai_provider_key_store.delete(user_id)
+    return {"success": True}
+
+
 @app.post("/api/compose", response_model=ComposeResponse)
 async def compose_automation(
     data: ComposeRequest,
     user_id: str = Depends(get_current_user),
 ):
-    """Compose a full approval automation from a prompt (Gemini). Rate limited
-    against the shared free-tier key; the result prefills the form for review."""
+    """Compose a full approval automation from a prompt using the user's own AI key.
+    The result prefills the form for review; nothing is sent."""
+    credentials = ai_provider_key_store.get_credentials(user_id)
+    if not credentials:
+        raise HTTPException(400, "Add your AI provider key in Settings to use AI compose.")
     enforce_ai_rate_limit(user_id)
-    # Record before the call: the provider hit consumes quota regardless of outcome.
     repository.record_ai_usage(user_id, "compose")
-    # Blocking httpx call to Gemini; keep it off the event loop.
-    return await asyncio.to_thread(gemini_service.compose, data.prompt, data.now)
+    # Blocking httpx call to the provider; keep it off the event loop.
+    return await asyncio.to_thread(compose_service.compose, credentials, data.prompt, data.now)
 
 
 # Short-lived in-process cache for the public stats endpoint so landing-page
