@@ -218,18 +218,6 @@ class ApprovalRequestRepository:
         )
         return (result.count or 0) > 0
 
-    @staticmethod
-    def get_daily_sent_count(user_id: str) -> int:
-        """Get count of sent requests today (UTC)"""
-        try:
-            result = supabase.rpc(
-                "get_daily_sent_count", {"user_uuid": user_id}
-            ).execute()
-            return result.data if result.data else 0
-        except Exception as e:
-            logger.error(f"Error getting daily count: {e}")
-            return 0
-
     # ---- AI usage (per-user rate limiting) ----
 
     @staticmethod
@@ -253,18 +241,6 @@ class ApprovalRequestRepository:
         except Exception as e:
             logger.error(f"Error counting AI usage: {e}")
             return 0
-
-    @staticmethod
-    def get_next_available_day(user_id: str) -> str | None:
-        """Get next available day for sending (has < 5 requests)"""
-        try:
-            result = supabase.rpc(
-                "get_next_available_day", {"user_uuid": user_id}
-            ).execute()
-            return result.data if result.data else None
-        except Exception as e:
-            logger.error(f"Error getting next available day: {e}")
-            return None
 
     @staticmethod
     def add_feedback(

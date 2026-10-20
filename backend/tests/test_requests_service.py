@@ -10,7 +10,6 @@ The repository, email service, and module helpers are monkeypatched, with no DB 
 network, mirroring tests/test_ai_rate_limit.py.
 """
 
-from datetime import datetime, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -196,15 +195,10 @@ def test_deadline_days_out_of_range_rejected(value):
 # atomic claim prevents double-send (M3)
 # ---------------------------------------------------------------------------
 
-def _under_limit(_uid):
-    return (0, datetime.now(timezone.utc), None)
-
-
 async def test_scheduled_send_skips_when_already_claimed(monkeypatch):
     monkeypatch.setattr(R.settings, "CRON_SECRET", "s")
     monkeypatch.setattr(R.settings, "SEND_PROVIDER", "brevo")  # skip gmail gate
     monkeypatch.setattr(R.repository, "get_by_id", lambda rid: _req(status="scheduled"))
-    monkeypatch.setattr(R, "get_daily_limit_info", _under_limit)
     monkeypatch.setattr(R.repository, "claim_scheduled_send", lambda rid, data: None)
 
     sends = []
@@ -224,7 +218,6 @@ async def test_scheduled_send_sends_once_when_claimed(monkeypatch):
     monkeypatch.setattr(R.settings, "CRON_SECRET", "s")
     monkeypatch.setattr(R.settings, "SEND_PROVIDER", "brevo")
     monkeypatch.setattr(R.repository, "get_by_id", lambda rid: _req(status="scheduled"))
-    monkeypatch.setattr(R, "get_daily_limit_info", _under_limit)
     monkeypatch.setattr(
         R.repository, "claim_scheduled_send", lambda rid, data: _req(status="pending")
     )

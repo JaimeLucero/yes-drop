@@ -69,10 +69,6 @@ export function startDashboardTour(navigate: (href: string) => void) {
         description: 'Open a request to send, edit, schedule, set reminders, or preview the approval page.',
       },
     },
-    {
-      element: '[data-tour="daily-limit"]',
-      popover: { title: 'Daily limit', description: 'Your sending allowance for the day, so nothing runs away.' },
-    },
   ]
 
   const finalStep: DriveStep = {

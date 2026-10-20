@@ -43,76 +43,17 @@ serve(async (req) => {
     }
 
     if (!requests || requests.length === 0) {
-      return new Response(JSON.stringify({ sent: 0, rescheduled: 0 }), {
+      return new Response(JSON.stringify({ sent: 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
     // Process each request
     let sentCount = 0
-    let rescheduleCount = 0
     const errors: any[] = []
 
     for (const request of requests) {
       try {
-        // Check daily limit for this user
-        const { data: dailyCount, error: countError } = await supabase
-          .rpc('get_daily_sent_count', { user_uuid: request.user_id })
-        
-        if (countError) {
-          console.error('Error getting daily count:', countError)
-          errors.push({ id: request.id, error: countError.message })
-          continue
-        }
-
-        if (dailyCount >= 5) {
-          // User has reached daily limit - auto-reschedule
-          // get_next_available_day returns DATE in UTC
-          const { data: nextDate, error: nextDateError } = await supabase
-            .rpc('get_next_available_day', { 
-              user_uuid: request.user_id,
-              start_date: new Date().toISOString().split('T')[0] // UTC date YYYY-MM-DD
-            })
-          
-          if (nextDateError) {
-            console.error('Error getting next available day:', nextDateError)
-            errors.push({ id: request.id, error: nextDateError.message })
-            continue
-          }
-
-          if (nextDate) {
-            // Parse original scheduled time (UTC) to keep same time of day
-            const originalScheduled = new Date(request.scheduled_send_at) // UTC
-            const newScheduled = new Date(nextDate) // UTC date at midnight
-            newScheduled.setUTCHours( // Set UTC hours to preserve UTC time
-              originalScheduled.getUTCHours(),
-              originalScheduled.getUTCMinutes(),
-              originalScheduled.getUTCSeconds()
-            )
-
-            // Update the scheduled time (stored as UTC in database)
-            const { error: updateError } = await supabase
-              .from('approval_requests')
-              .update({
-                scheduled_send_at: newScheduled.toISOString(), // UTC ISO string
-                updated_at: new Date().toISOString(), // UTC
-              })
-              .eq('id', request.id)
-
-            if (updateError) {
-              console.error('Error rescheduling:', updateError)
-              errors.push({ id: request.id, error: updateError.message })
-              continue
-            }
-
-            rescheduleCount++
-            console.log(`[UTC] Rescheduled request ${request.id} to ${newScheduled.toISOString()}`)
-            
-            // Note: Email notification for reschedule will be sent by backend
-          }
-          continue
-        }
-
         // Send email via backend API
         const backendUrl = Deno.env.get('BACKEND_URL')
         if (!backendUrl) {
@@ -144,9 +85,8 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ 
-      sent: sentCount, 
-      rescheduled: rescheduleCount,
-      errors 
+      sent: sentCount,
+      errors
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
