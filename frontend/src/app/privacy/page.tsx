@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="September 2026">
+    <LegalPage title="Privacy Policy" updated="October 2026">
       <p>
         This policy explains what information YesDrop collects when you use the service, how we use it, and the
         choices you have. By using YesDrop you agree to the practices described here.
@@ -19,7 +19,9 @@ export default function PrivacyPage() {
       <p>
         We collect the account details you provide when you sign up (your name and email address), and the
         content of the approval requests you create, including approver email addresses, titles, messages, and
-        any files you attach. We also record basic activity such as when a request is sent, viewed, or decided.
+        any files you attach. We also record basic activity such as when a request is sent, viewed, or decided. If you
+        choose to use AI compose, we also store the AI provider, model, and API key you give us, with the key
+        encrypted.
       </p>
 
       <h2>How we use it</h2>
@@ -98,8 +100,8 @@ export default function PrivacyPage() {
           them, along with the request content you write. Their replies go to your own inbox.
         </li>
         <li>
-          <strong>Supabase</strong>, which hosts our database and sign-in service, and stores your account details and
-          the encrypted Gmail token.
+          <strong>Supabase</strong>, which hosts our database and sign-in service, and stores your account details, the
+          encrypted Gmail token, and, if you connect one, your encrypted AI provider key.
         </li>
         <li>
           <strong>Render</strong>, which hosts the YesDrop servers that process your data to send email.
