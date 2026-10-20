@@ -16,13 +16,6 @@ PROVIDER_GEMINI = "gemini"
 PROVIDER_ANTHROPIC = "anthropic"
 PROVIDER_OPENAI = "openai"
 
-# Defaults prefill the settings form; the user can change the model id.
-DEFAULT_MODEL_BY_PROVIDER = {
-    PROVIDER_GEMINI: "gemini-2.5-flash",
-    PROVIDER_ANTHROPIC: "claude-haiku-5-5",
-    PROVIDER_OPENAI: "gpt-4o-mini",
-}
-
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
@@ -40,6 +33,8 @@ RATE_LIMITED_MESSAGE = "Your AI provider is rate limiting this key. Try again sh
 COMPOSE_FAILED_MESSAGE = "Could not compose the automation. Try again."
 REFUSED_MESSAGE = "The AI declined this request. Try rewording it."
 CUT_OFF_MESSAGE = "The AI response was cut off. Try a shorter request."
+UNREADABLE_MESSAGE = "AI returned an unreadable draft"
+FINISH_REASON_LENGTH = "length"
 STOP_REASON_REFUSAL = "refusal"
 STOP_REASON_MAX_TOKENS = "max_tokens"
 
@@ -106,7 +101,7 @@ def _call_openai(api_key: str, model: str, system_prompt: str, prompt: str) -> s
         {"Authorization": f"Bearer {api_key}"},
         body,
     )
-    return _read_reply(lambda: reply["choices"][0]["message"]["content"])
+    return _read_openai_text(reply)
 
 
 def _post_json(provider: str, url: str, auth_headers: dict[str, str], body: dict) -> dict:
@@ -142,6 +137,23 @@ def _http_error_for_status(provider: str, response: httpx.Response) -> HTTPExcep
     return HTTPException(502, COMPOSE_FAILED_MESSAGE)
 
 
+def _read_openai_text(reply: dict) -> str:
+    """Return the message content, mapping refusals and truncation to clear errors."""
+    try:
+        choice = reply["choices"][0]
+    except (KeyError, IndexError, TypeError):
+        raise HTTPException(502, UNREADABLE_MESSAGE)
+    message = choice.get("message") or {}
+    if message.get("refusal"):
+        raise HTTPException(502, REFUSED_MESSAGE)
+    if choice.get("finish_reason") == FINISH_REASON_LENGTH:
+        raise HTTPException(502, CUT_OFF_MESSAGE)
+    content = message.get("content")
+    if not content:
+        raise HTTPException(502, UNREADABLE_MESSAGE)
+    return content
+
+
 def _read_anthropic_text(reply: dict) -> str:
     """Return the first text block; thinking blocks can precede it."""
     stop_reason = reply.get("stop_reason")
@@ -158,4 +170,4 @@ def _read_reply(read_text) -> str:
     try:
         return read_text()
     except (KeyError, IndexError, TypeError, StopIteration):
-        raise HTTPException(502, "AI returned an unreadable draft")
+        raise HTTPException(502, UNREADABLE_MESSAGE)

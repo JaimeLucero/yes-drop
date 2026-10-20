@@ -31,7 +31,7 @@ def signed_in_user(monkeypatch):
 
 def test_save_never_echoes_the_key(signed_in_user):
     response = client.put(
-        "/api/ai/settings", json={"provider": "openai", "model": "gpt-4o-mini", "api_key": API_KEY}
+        "/api/ai/settings", json={"provider": "openai", "model": "gpt-6-luna", "api_key": API_KEY}
     )
 
     assert response.status_code == 200

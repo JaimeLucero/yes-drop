@@ -131,7 +131,7 @@ test.describe('AI provider settings', () => {
 
     await page.goto('/settings')
     for (const [provider, model, linkName] of [
-      ['openai', 'gpt-4o-mini', 'Get your OpenAI API key'],
+      ['openai', 'gpt-6-luna', 'Get your OpenAI API key'],
       ['gemini', 'gemini-2.5-flash', 'Get your Google Gemini API key'],
     ]) {
       await page.getByRole('combobox', { name: 'Provider' }).selectOption(provider)

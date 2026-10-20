@@ -22,7 +22,7 @@ const PROVIDER_OPTIONS: { provider: AiProvider; label: string; defaultModel: str
   {
     provider: 'openai',
     label: 'OpenAI',
-    defaultModel: 'gpt-4o-mini',
+    defaultModel: 'gpt-6-luna',
     getKeyUrl: 'https://platform.openai.com/api-keys',
   },
 ]

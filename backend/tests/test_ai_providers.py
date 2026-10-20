@@ -165,3 +165,47 @@ def test_anthropic_without_text_block_is_unreadable(reply_with):
         _request("anthropic")
 
     assert error.value.status_code == 502
+
+
+def test_openai_refusal_gets_a_clear_error(reply_with):
+    reply_with(
+        {"choices": [{"finish_reason": "stop", "message": {"content": None, "refusal": "I can't help"}}]}
+    )
+
+    with pytest.raises(HTTPException) as error:
+        _request("openai")
+
+    assert error.value.detail == providers.REFUSED_MESSAGE
+
+
+def test_openai_truncated_reply_gets_a_clear_error(reply_with):
+    reply_with({"choices": [{"finish_reason": "length", "message": {"content": "{"}}]})
+
+    with pytest.raises(HTTPException) as error:
+        _request("openai")
+
+    assert error.value.detail == providers.CUT_OFF_MESSAGE
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [{}, {"choices": []}, {"choices": [{"finish_reason": "stop", "message": {"content": None}}]}],
+)
+def test_openai_empty_reply_is_unreadable(reply_with, payload):
+    reply_with(payload)
+
+    with pytest.raises(HTTPException) as error:
+        _request("openai")
+
+    assert error.value.detail == providers.UNREADABLE_MESSAGE
+
+
+def test_openai_json_mode_request_mentions_json_in_the_system_prompt(reply_with):
+    from services.compose_service import SYSTEM_PROMPT
+
+    calls = reply_with({"choices": [{"finish_reason": "stop", "message": {"content": "{}"}}]})
+
+    providers.request_json_text("openai", API_KEY, "gpt-6-luna", SYSTEM_PROMPT, "hi", {})
+
+    # OpenAI rejects json_object mode when the word JSON is absent from the messages.
+    assert "JSON" in calls[0]["json"]["messages"][0]["content"]
