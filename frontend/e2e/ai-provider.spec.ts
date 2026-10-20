@@ -7,7 +7,7 @@ const BACKEND_URL = 'http://localhost:8000'
 const SCREENSHOT_DIRECTORY =
   '/private/tmp/claude-501/-Users-jaimeemanuellucero-Projects-yes-drop/2aed33ee-a213-4c09-abd9-e0d56ba28313/scratchpad/screens'
 const TEST_API_KEY = 'sk-ant-test-key-1234567890'
-const REJECTED_API_KEY = 'rejected-key-1234567890'
+const REJECTED_API_KEY = 'invalid-test-key'
 const VERIFIED_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']
 const CORS_HEADERS = {
   'access-control-allow-origin': '*',

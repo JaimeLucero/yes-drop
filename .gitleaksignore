@@ -1,0 +1,2 @@
+# Fake key in an e2e fixture, flagged as generic-api-key in 7be2b8f. The string was replaced in the next commit.
+7be2b8f8daf7f3b910b68f8065b3e7ae0cf5db19:frontend/e2e/ai-provider.spec.ts:generic-api-key:10
