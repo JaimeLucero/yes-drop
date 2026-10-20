@@ -22,7 +22,6 @@ This creates:
 - Updated status constraint (draft, scheduled, pending, approved, rejected)
 - New columns: `scheduled_send_at`, `sent_at`, `approver_email`
 - Indexes for performance
-- Functions: `get_daily_sent_count()`, `get_next_available_day()`
 
 ---
 
@@ -134,24 +133,10 @@ In Storage → `approval-files` → Policies:
 
 1. **Create Draft**: Go to `/requests/new`, fill form, select "Save as Draft"
 2. **Schedule**: Click "Schedule" on draft, pick future date/time
-3. **Send Now**: Click "Send Now" on draft (checks daily limit)
+3. **Send Now**: Click "Send Now" on draft
 4. **Verify Email**: Check approver inbox for approval request
 5. **Approve/Reject**: Click link in email, verify status updates
 6. **Check Notifications**: Verify status change emails are sent
-
-### Test Daily Limit
-
-1. Create and send 5 requests in one day
-2. Try to send 6th → Should be blocked with error
-3. Try to schedule for tomorrow → Should work
-4. Verify "Next available date" is shown
-
-### Test Auto-Reschedule
-
-1. Schedule 6+ requests for same time tomorrow
-2. Wait for Edge Function to run (every 5 min)
-3. First 5 should send, rest should auto-reschedule
-4. Check emails for reschedule notifications
 
 ---
 
@@ -175,12 +160,6 @@ In Storage → `approval-files` → Policies:
 ---
 
 ## 8. Troubleshooting
-
-### "Daily limit reached" error
-
-- Check `get_daily_sent_count()` function in Supabase
-- Verify UTC timezone conversion is correct
-- Check if requests are being counted with correct status
 
 ### Scheduled requests not sending
 
@@ -215,8 +194,6 @@ In Storage → `approval-files` → Policies:
 - [ ] Custom domain configured (yesdrop.online)
 - [ ] Test full OAuth flow
 - [ ] Test email sending (draft → scheduled → sent → approved)
-- [ ] Test daily limit enforcement
-- [ ] Test auto-reschedule functionality
 - [ ] Monitor logs for 24 hours
 
 ---

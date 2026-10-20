@@ -176,11 +176,3 @@ class PublicRequest(BaseModel):
     sent_at: str | None = None
 
 
-class DailyLimitResponse(BaseModel):
-    """Response for daily limit endpoint"""
-
-    used: int
-    limit: int
-    remaining: int
-    resets_at: str
-    next_available_date: str | None

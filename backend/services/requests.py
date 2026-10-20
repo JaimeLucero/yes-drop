@@ -22,7 +22,6 @@ from models.schemas import (
     ApprovalRequestDraft,
     ApprovalRequestUpdate,
     ApprovalRequestResponse,
-    DailyLimitResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,36 +38,6 @@ async def get_user_email(user_id: str) -> Optional[str]:
     except Exception as e:
         logger.error(f"Error fetching user email: {e}")
         return None
-
-
-# Max approval requests a user can send per day.
-DAILY_REQUEST_LIMIT = 15
-
-
-def get_daily_limit_info(user_id: str) -> tuple[int, datetime, str | None]:
-    """Get daily usage info using Supabase RPC functions"""
-    try:
-        # Get daily count
-        count = repository.get_daily_sent_count(user_id)
-
-        # Calculate reset time (midnight UTC)
-        now_utc = datetime.now(timezone.utc)
-        tomorrow_utc = (now_utc + timedelta(days=1)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-
-        # Get next available date
-        next_available = repository.get_next_available_day(user_id)
-
-        return count, tomorrow_utc, next_available
-    except Exception as e:
-        logger.error(f"Error getting daily limit: {e}")
-        # Fallback to 0 if RPC fails
-        now_utc = datetime.now(timezone.utc)
-        tomorrow_utc = (now_utc + timedelta(days=1)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        return 0, tomorrow_utc, None
 
 
 def _humanize_hours(hours: float) -> str:
@@ -418,19 +387,8 @@ class ApprovalRequestService:
             sender_email = request.sender_email
             sender_name = request.sender_name
 
-        # Check daily limit only if sending immediately
         if not request.scheduled_send_at:
             _require_gmail_connected(user_id)
-            count, reset_time, _ = get_daily_limit_info(user_id)
-            if count >= DAILY_REQUEST_LIMIT:
-                raise HTTPException(
-                    400,
-                    detail={
-                        "message": f"Daily limit reached ({DAILY_REQUEST_LIMIT} requests/day)",
-                        "resets_at": reset_time.isoformat(),
-                        "suggestion": "Consider scheduling for tomorrow or save as draft",
-                    },
-                )
 
         token = secrets.token_urlsafe(32)
         req_id = str(uuid.uuid4())
@@ -539,7 +497,7 @@ class ApprovalRequestService:
     async def create_draft(
         request: ApprovalRequestDraft, user_id: str
     ) -> ApprovalRequestResponse:
-        """Create a draft request (not sent, no daily limit check)"""
+        """Create a draft request (not sent)"""
         req_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
 
@@ -665,17 +623,6 @@ class ApprovalRequestService:
 
         _require_gmail_connected(user_id)
 
-        # Check daily limit
-        count, reset_time, _ = get_daily_limit_info(user_id)
-        if count >= DAILY_REQUEST_LIMIT:
-            raise HTTPException(
-                400,
-                detail={
-                    "message": f"Daily limit reached ({DAILY_REQUEST_LIMIT} requests/day)",
-                    "resets_at": reset_time.isoformat(),
-                },
-            )
-
         # Update status and send email
         now = datetime.now(timezone.utc)
         # `or 3`, not get(..., 3): a NULL column returns None and timedelta(days=None) crashes.
@@ -797,27 +744,6 @@ class ApprovalRequestService:
         """List user's requests with optional status filter"""
         records = repository.get_by_user(user_id, status)
         return [to_response(r) for r in records]
-
-    @staticmethod
-    def get_daily_limit(user_id: str) -> DailyLimitResponse:
-        """Get current daily usage and reset time"""
-        count, reset_time, next_available = get_daily_limit_info(user_id)
-
-        # next_available might be a string from Supabase RPC
-        next_available_str = None
-        if next_available:
-            if isinstance(next_available, str):
-                next_available_str = next_available
-            else:
-                next_available_str = next_available.isoformat()
-
-        return DailyLimitResponse(
-            used=count,
-            limit=DAILY_REQUEST_LIMIT,
-            remaining=max(0, DAILY_REQUEST_LIMIT - count),
-            resets_at=reset_time.isoformat(),
-            next_available_date=next_available_str,
-        )
 
     @staticmethod
     def get_public_request(token: str) -> dict:
@@ -968,49 +894,6 @@ class ApprovalRequestService:
                 f"Scheduled request {request_id} not sent: Gmail not connected"
             )
             return {"success": False, "reason": "gmail_not_connected"}
-
-        # Check daily limit
-        count, reset_time, next_available = get_daily_limit_info(req["user_id"])
-
-        if count >= DAILY_REQUEST_LIMIT:
-            # Auto-reschedule for next available day
-            if next_available:
-                # Parse original scheduled time to keep the same time of day
-                original_scheduled = datetime.fromisoformat(req["scheduled_send_at"])
-                new_scheduled = datetime(
-                    next_available.year
-                    if isinstance(next_available, datetime)
-                    else int(next_available.split("-")[0]),
-                    next_available.month
-                    if isinstance(next_available, datetime)
-                    else int(next_available.split("-")[1]),
-                    next_available.day
-                    if isinstance(next_available, datetime)
-                    else int(next_available.split("-")[2]),
-                    original_scheduled.hour,
-                    original_scheduled.minute,
-                    original_scheduled.second,
-                )
-
-                repository.update(
-                    request_id,
-                    {
-                        "scheduled_send_at": new_scheduled.isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                    },
-                )
-
-                # Notify user of reschedule using stored email
-                requester_email = req.get("requester_email")
-                if requester_email:
-                    await email_service.send_status_notification(
-                        to_email=requester_email,
-                        request_title=req["title"] or "Untitled",
-                        old_status="scheduled",
-                        new_status="scheduled",
-                    )
-
-            raise HTTPException(429, "Daily limit reached, auto-rescheduled")
 
         # Atomically claim the send: flip scheduled -> pending BEFORE sending so
         # two overlapping cron invocations can't both send this request.

@@ -120,7 +120,6 @@ function DashboardView() {
     mutationFn: deleteRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
-      queryClient.invalidateQueries({ queryKey: ['daily-limit'] })
       queryClient.invalidateQueries({ queryKey: ['my-stats'] })
       clearSelection()
       toast.success('Request deleted')
@@ -132,7 +131,6 @@ function DashboardView() {
     mutationFn: sendRequestNow,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['requests'] })
-      queryClient.invalidateQueries({ queryKey: ['daily-limit'] })
       queryClient.invalidateQueries({ queryKey: ['my-stats'] })
       toast.success('Request sent')
     },

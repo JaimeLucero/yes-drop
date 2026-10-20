@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Moon, Sun, LogOut, ChevronsLeft, ChevronsRight, Compass, Settings } from 'lucide-react'
-import { getMyStats, getDailyLimit } from '@/lib/api'
+import { getMyStats } from '@/lib/api'
 import { NAV_FOLDERS, type FolderValue } from './status-meta'
 import { BrandLogo } from '@/components/brand-logo'
 import { useTheme } from '@/components/theme-provider'
@@ -44,7 +44,6 @@ export function DashboardSidebar({
   const { theme, toggleTheme } = useTheme()
   const [signOutOpen, setSignOutOpen] = useState(false)
   const { data: stats } = useQuery({ queryKey: ['my-stats'], queryFn: getMyStats, refetchInterval: 30000 })
-  const { data: limit } = useQuery({ queryKey: ['daily-limit'], queryFn: getDailyLimit, refetchInterval: 60000 })
 
   const countFor = (value: FolderValue): number | null => {
     if (!stats) return null
@@ -150,26 +149,6 @@ export function DashboardSidebar({
 
       {/* Account block */}
       <div className={cn('space-y-2 border-t border-sidebar-border', collapsed ? 'px-2 py-3' : 'p-3')}>
-        {!collapsed && limit && (
-          <div data-tour="daily-limit" className="rounded-lg bg-muted/60 px-3 py-2">
-            <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Daily usage</span>
-              <span className="data-num">
-                {limit.used}/{limit.limit}
-              </span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all',
-                  limit.used >= limit.limit ? 'bg-red-500' : limit.used >= limit.limit - 1 ? 'bg-amber-500' : 'bg-primary'
-                )}
-                style={{ width: `${Math.min((limit.used / limit.limit) * 100, 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
-
         {onStartTour && (
           <button
             onClick={onStartTour}

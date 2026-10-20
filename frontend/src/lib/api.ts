@@ -75,14 +75,6 @@ export interface Reminder {
   custom_message?: string
 }
 
-export interface DailyLimit {
-  used: number
-  limit: number
-  remaining: number
-  resets_at: string
-  next_available_date: string | null
-}
-
 export interface PublicStats {
   total_sent: number
   total_approved: number
@@ -120,20 +112,6 @@ export async function getMyStats(): Promise<MyStats> {
   })
 
   if (!response.ok) throw new Error('Failed to fetch user stats')
-  return response.json()
-}
-
-export async function getDailyLimit(): Promise<DailyLimit> {
-  const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (!session) throw new Error('Not authenticated')
-
-  const response = await fetch(`${BACKEND_URL}/api/requests/limit`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  })
-
-  if (!response.ok) throw new Error('Failed to fetch daily limit')
   return response.json()
 }
 

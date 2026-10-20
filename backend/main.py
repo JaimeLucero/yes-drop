@@ -34,7 +34,6 @@ from models.schemas import (
     ApprovalRequestResponse,
     ComposeRequest,
     ComposeResponse,
-    DailyLimitResponse,
     ScheduleRequest,
     GoogleConnectRequest,
     GoogleStatusResponse,
@@ -74,7 +73,7 @@ async def create_draft(
     request: ApprovalRequestDraft,
     user_id: str = Depends(get_current_user),
 ):
-    """Create a draft request (not sent, no daily limit check)"""
+    """Create a draft request (not sent)"""
     return await service.create_draft(request, user_id)
 
 
@@ -132,14 +131,6 @@ async def list_requests(
 ):
     """List user's requests with optional status filter"""
     return service.list_requests(user_id, status)
-
-
-@app.get("/api/requests/limit", response_model=DailyLimitResponse)
-async def get_daily_limit(
-    user_id: str = Depends(get_current_user),
-):
-    """Get current daily usage and reset time"""
-    return service.get_daily_limit(user_id)
 
 
 @app.get("/api/google/status", response_model=GoogleStatusResponse)

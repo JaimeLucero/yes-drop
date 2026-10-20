@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/button'
 import { StatusBadge } from './status-meta'
 import { ApprovalPreview } from './approval-preview'
 import { AnalyticsBand } from './analytics-band'
-import { DailyLimitIndicator } from '@/components/daily-limit-indicator'
 import { cn } from '@/lib/utils'
 
 function initial(email: string | null | undefined): string {
@@ -63,7 +62,6 @@ export function RequestDetailEmpty() {
             Select a request to see its details, or start a new one.
           </p>
         </div>
-        <DailyLimitIndicator />
         <AnalyticsBand />
       </div>
     </div>

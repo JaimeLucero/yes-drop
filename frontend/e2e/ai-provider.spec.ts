@@ -1,8 +1,8 @@
 import { test, expect, type Page, type Route } from '@playwright/test'
+import { signIn } from './support/auth'
 
 // Everything external is mocked: Supabase auth and the YesDrop backend. No real
 // keys, no Gmail, no provider calls. The backend mock mirrors /api/ai/*.
-const SUPABASE_PROJECT_REF = 'aurhheqwpfpngqmhegvx'
 const BACKEND_URL = 'http://localhost:8000'
 const SCREENSHOT_DIRECTORY =
   '/private/tmp/claude-501/-Users-jaimeemanuellucero-Projects-yes-drop/2aed33ee-a213-4c09-abd9-e0d56ba28313/scratchpad/screens'
@@ -20,41 +20,6 @@ interface BackendMock {
   savedRequestBodies: Record<string, string>[]
   composeRequestBodies: Record<string, string>[]
   modelRequestBodies: Record<string, string>[]
-}
-
-function toBase64Url(text: string): string {
-  return Buffer.from(text).toString('base64url')
-}
-
-async function signIn(page: Page) {
-  await page.addInitScript(() => localStorage.setItem('yesdrop_consent', 'denied'))
-  const user = {
-    id: 'user-1',
-    aud: 'authenticated',
-    email: 'tester@example.com',
-    email_confirmed_at: '2026-01-01T00:00:00Z',
-    app_metadata: {},
-    user_metadata: {},
-    created_at: '2026-01-01T00:00:00Z',
-  }
-  const session = {
-    access_token: 'test-access-token',
-    refresh_token: 'test-refresh-token',
-    token_type: 'bearer',
-    expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    user,
-  }
-  await page.context().addCookies([
-    {
-      name: `sb-${SUPABASE_PROJECT_REF}-auth-token`,
-      value: `base64-${toBase64Url(JSON.stringify(session))}`,
-      url: 'http://localhost:3000',
-    },
-  ])
-  await page.route('**/auth/v1/user', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) })
-  )
 }
 
 async function mockBackend(page: Page, initialSettings: BackendMock['settings']): Promise<BackendMock> {
