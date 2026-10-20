@@ -4,27 +4,12 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { KeyRound, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { deleteAiSettings, fetchAiSettings, saveAiSettings, type AiProvider } from '@/lib/api'
+import { deleteAiSettings, fetchAiModels, fetchAiSettings, saveAiSettings, type AiProvider } from '@/lib/api'
 
-const PROVIDER_OPTIONS: { provider: AiProvider; label: string; defaultModel: string; getKeyUrl: string }[] = [
-  {
-    provider: 'gemini',
-    label: 'Google Gemini',
-    defaultModel: 'gemini-2.5-flash',
-    getKeyUrl: 'https://aistudio.google.com/apikey',
-  },
-  {
-    provider: 'anthropic',
-    label: 'Anthropic Claude',
-    defaultModel: 'claude-haiku-5-5',
-    getKeyUrl: 'https://platform.claude.com/docs/en/get-api-key',
-  },
-  {
-    provider: 'openai',
-    label: 'OpenAI',
-    defaultModel: 'gpt-6-luna',
-    getKeyUrl: 'https://platform.openai.com/api-keys',
-  },
+const PROVIDER_OPTIONS: { provider: AiProvider; label: string; getKeyUrl: string }[] = [
+  { provider: 'gemini', label: 'Google Gemini', getKeyUrl: 'https://aistudio.google.com/apikey' },
+  { provider: 'anthropic', label: 'Anthropic Claude', getKeyUrl: 'https://platform.claude.com/docs/en/get-api-key' },
+  { provider: 'openai', label: 'OpenAI', getKeyUrl: 'https://platform.openai.com/api-keys' },
 ]
 
 const AI_SETTINGS_QUERY_KEY = ['ai-settings']
@@ -33,18 +18,40 @@ function labelForProvider(provider: AiProvider | null): string {
   return PROVIDER_OPTIONS.find((option) => option.provider === provider)?.label ?? 'AI provider'
 }
 
-/** Bring-your-own-key AI setup for the settings page. The key is write-only: it is never shown again. */
+/**
+ * Bring-your-own-key AI setup for the settings page. The key is write-only: it is never shown again.
+ * A model can only be chosen after the provider has accepted the key, from the models that key can use.
+ */
 export function AiProviderCard() {
   const queryClient = useQueryClient()
   const { data: aiSettings, isLoading } = useQuery({ queryKey: AI_SETTINGS_QUERY_KEY, queryFn: fetchAiSettings })
   const [provider, setProvider] = useState<AiProvider>('gemini')
-  const [model, setModel] = useState(PROVIDER_OPTIONS[0].defaultModel)
   const [apiKey, setApiKey] = useState('')
+  const [verifiedModels, setVerifiedModels] = useState<string[] | null>(null)
+  const [model, setModel] = useState('')
+
+  function resetVerification() {
+    setVerifiedModels(null)
+    setModel('')
+  }
+
+  const verifyMutation = useMutation({
+    mutationFn: () => fetchAiModels(provider, apiKey.trim()),
+    onSuccess: (models) => {
+      setVerifiedModels(models)
+      setModel(models[0] ?? '')
+    },
+    onError: (error) => {
+      resetVerification()
+      toast.error(error instanceof Error ? error.message : 'Could not verify the key')
+    },
+  })
 
   const saveMutation = useMutation({
-    mutationFn: () => saveAiSettings({ provider, model: model.trim(), api_key: apiKey.trim() }),
+    mutationFn: () => saveAiSettings({ provider, model, api_key: apiKey.trim() }),
     onSuccess: async () => {
       setApiKey('')
+      resetVerification()
       await queryClient.invalidateQueries({ queryKey: AI_SETTINGS_QUERY_KEY })
       toast.success('AI key saved.')
     },
@@ -62,12 +69,19 @@ export function AiProviderCard() {
 
   function handleProviderChange(nextProvider: AiProvider) {
     setProvider(nextProvider)
-    const nextOption = PROVIDER_OPTIONS.find((option) => option.provider === nextProvider)
-    if (nextOption) setModel(nextOption.defaultModel)
+    resetVerification()
+  }
+
+  function handleApiKeyChange(nextApiKey: string) {
+    setApiKey(nextApiKey)
+    resetVerification()
   }
 
   const selectedOption = PROVIDER_OPTIONS.find((option) => option.provider === provider) ?? PROVIDER_OPTIONS[0]
-  const canSave = !saveMutation.isPending && apiKey.trim().length > 0 && model.trim().length > 0
+  const isVerified = verifiedModels !== null
+  const hasNoUsableModels = isVerified && verifiedModels.length === 0
+  const canVerify = !verifyMutation.isPending && apiKey.trim().length > 0
+  const canSave = !saveMutation.isPending && isVerified && model.length > 0
 
   return (
     <section aria-labelledby="ai-provider-heading" className="rounded-xl border border-border bg-card p-5">
@@ -106,37 +120,27 @@ export function AiProviderCard() {
       </div>
 
       <div className="mt-4 space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-xs text-muted-foreground">
-            Provider
-            <select
-              value={provider}
-              onChange={(event) => handleProviderChange(event.target.value as AiProvider)}
-              className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
-            >
-              {PROVIDER_OPTIONS.map((option) => (
-                <option key={option.provider} value={option.provider}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs text-muted-foreground">
-            Model
-            <input
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
-            />
-          </label>
-        </div>
+        <label className="block text-xs text-muted-foreground">
+          Provider
+          <select
+            value={provider}
+            onChange={(event) => handleProviderChange(event.target.value as AiProvider)}
+            className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
+          >
+            {PROVIDER_OPTIONS.map((option) => (
+              <option key={option.provider} value={option.provider}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="block text-xs text-muted-foreground">
           API key
           <input
             type="password"
             autoComplete="off"
             value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
+            onChange={(event) => handleApiKeyChange(event.target.value)}
             placeholder={aiSettings?.configured ? 'Paste a new key to replace the saved one' : 'Paste your API key'}
             className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
           />
@@ -149,6 +153,40 @@ export function AiProviderCard() {
         >
           Get your {selectedOption.label} API key
         </a>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => verifyMutation.mutate()}
+            disabled={!canVerify}
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+          >
+            {verifyMutation.isPending ? 'Verifying…' : 'Verify key'}
+          </button>
+          {isVerified && !hasNoUsableModels && (
+            <p className="flex items-center gap-1.5 text-sm text-emerald-600">
+              <CheckCircle2 className="h-4 w-4" />
+              Key verified. {verifiedModels.length} recent models available.
+            </p>
+          )}
+          {hasNoUsableModels && (
+            <p className="text-sm text-amber-600">This key has no models available for text generation.</p>
+          )}
+        </div>
+        <label className="block text-xs text-muted-foreground">
+          Model
+          <select
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+            disabled={!isVerified || hasNoUsableModels}
+            className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground disabled:opacity-50"
+          >
+            {!isVerified && <option value="">Verify your key to choose a model</option>}
+            {verifiedModels?.map((verifiedModel) => (
+              <option key={verifiedModel} value={verifiedModel}>
+                {verifiedModel}
+              </option>
+            ))}
+          </select>
+        </label>
         <p className="text-xs text-muted-foreground">
           Your key is encrypted and used only to run AI compose for you. Usage is billed to your own provider
           account. Emails, links and phone numbers are removed from your text before it is sent, but names are not,

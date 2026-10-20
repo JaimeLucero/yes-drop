@@ -39,6 +39,17 @@ class AiSettingsRequest(BaseModel):
     api_key: str = Field(min_length=MIN_API_KEY_LENGTH, max_length=MAX_API_KEY_LENGTH)
 
 
+class AiModelsRequest(BaseModel):
+    """Verify a key with its provider and list the models it can use."""
+
+    provider: Literal["gemini", "anthropic", "openai"]
+    api_key: str = Field(min_length=MIN_API_KEY_LENGTH, max_length=MAX_API_KEY_LENGTH)
+
+
+class AiModelsResponse(BaseModel):
+    models: list[str]
+
+
 class AiSettingsResponse(BaseModel):
     configured: bool = False
     provider: str | None = None

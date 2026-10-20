@@ -196,11 +196,15 @@ export interface AiSettings {
   model: string | null
 }
 
-async function authorizedAiSettingsRequest(method: 'GET' | 'PUT' | 'DELETE', body?: object): Promise<Response> {
+async function authorizedAiRequest(
+  path: string,
+  method: 'GET' | 'PUT' | 'POST' | 'DELETE',
+  body?: object
+): Promise<Response> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Not authenticated')
-  return fetch(`${BACKEND_URL}/api/ai/settings`, {
+  return fetch(`${BACKEND_URL}${path}`, {
     method,
     headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
@@ -208,7 +212,7 @@ async function authorizedAiSettingsRequest(method: 'GET' | 'PUT' | 'DELETE', bod
 }
 
 export async function fetchAiSettings(): Promise<AiSettings> {
-  const response = await authorizedAiSettingsRequest('GET')
+  const response = await authorizedAiRequest('/api/ai/settings', 'GET')
   if (!response.ok) throw new Error('Failed to load AI settings')
   return response.json()
 }
@@ -218,13 +222,24 @@ export async function saveAiSettings(settings: {
   model: string
   api_key: string
 }): Promise<AiSettings> {
-  const response = await authorizedAiSettingsRequest('PUT', settings)
-  if (!response.ok) throw new Error('Could not save the AI key. Check the model name and key.')
+  const response = await authorizedAiRequest('/api/ai/settings', 'PUT', settings)
+  if (!response.ok) throw new Error('Could not save the AI key. Verify it again.')
   return response.json()
 }
 
+/** Verifies the key with its provider and returns the recent models it can use. */
+export async function fetchAiModels(provider: AiProvider, apiKey: string): Promise<string[]> {
+  const response = await authorizedAiRequest('/api/ai/models', 'POST', { provider, api_key: apiKey })
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.detail?.message || err.detail || 'Could not verify the key')
+  }
+  const { models } = await response.json()
+  return models
+}
+
 export async function deleteAiSettings(): Promise<void> {
-  const response = await authorizedAiSettingsRequest('DELETE')
+  const response = await authorizedAiRequest('/api/ai/settings', 'DELETE')
   if (!response.ok) throw new Error('Could not remove the AI key')
 }
 

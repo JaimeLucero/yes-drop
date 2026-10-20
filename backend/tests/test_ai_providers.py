@@ -209,3 +209,117 @@ def test_openai_json_mode_request_mentions_json_in_the_system_prompt(reply_with)
 
     # OpenAI rejects json_object mode when the word JSON is absent from the messages.
     assert "JSON" in calls[0]["json"]["messages"][0]["content"]
+
+
+@pytest.fixture
+def list_reply_with(monkeypatch):
+    """Install a fake httpx.get that returns the payload; returns the recorded calls."""
+
+    def install(payload):
+        calls = []
+
+        def fake_get(url, **kwargs):
+            calls.append({"url": url, **kwargs})
+            return FakeResponse(payload=payload)
+
+        monkeypatch.setattr(httpx, "get", fake_get)
+        return calls
+
+    return install
+
+
+def _gemini_model(name, methods=("generateContent",)):
+    return {"name": f"models/{name}", "supportedGenerationMethods": list(methods)}
+
+
+def test_gemini_lists_latest_aliases_then_stable_models_newest_first(list_reply_with):
+    calls = list_reply_with(
+        {
+            "models": [
+                _gemini_model("gemini-2.5-flash"),
+                _gemini_model("gemini-3.8-flash"),
+                _gemini_model("gemini-flash-latest"),
+                _gemini_model("gemini-pro-latest"),
+                _gemini_model("gemini-3.1-pro-preview"),
+                _gemini_model("gemini-3.9-flash-exp"),
+                _gemini_model("gemini-3.8-flash-tts"),
+                _gemini_model("gemini-3.1-flash-image"),
+                _gemini_model("gemini-2.5-embedding", methods=("embedContent",)),
+                _gemini_model("deep-research-pro-preview-12-2025"),
+                _gemini_model("gemma-4-31b-it"),
+            ]
+        }
+    )
+
+    assert providers.list_models("gemini", API_KEY) == [
+        "gemini-flash-latest",
+        "gemini-pro-latest",
+        "gemini-3.8-flash",
+        "gemini-2.5-flash",
+    ]
+    assert calls[0]["headers"]["x-goog-api-key"] == API_KEY
+    assert API_KEY not in calls[0]["url"]
+
+
+def test_gemini_caps_the_list_at_the_recent_limit(list_reply_with):
+    list_reply_with({"models": [_gemini_model(f"gemini-{major}.0-flash") for major in range(1, 20)]})
+
+    models = providers.list_models("gemini", API_KEY)
+
+    assert len(models) == providers.MAX_RECENT_MODELS
+    assert models[0] == "gemini-19.0-flash"
+
+
+def test_anthropic_lists_active_models_newest_first(list_reply_with):
+    calls = list_reply_with(
+        {
+            "data": [
+                {"id": "claude-old", "created_at": "2025-01-01T00:00:00Z", "lifecycle": "active"},
+                {"id": "claude-new", "created_at": "2026-09-21T00:00:00Z", "lifecycle": "active"},
+                {"id": "claude-mid", "created_at": "2025-11-01T00:00:00Z"},
+                {"id": "claude-deprecated", "created_at": "2026-10-01T00:00:00Z", "lifecycle": "deprecated"},
+            ],
+            "has_more": False,
+        }
+    )
+
+    assert providers.list_models("anthropic", API_KEY) == ["claude-new", "claude-mid", "claude-old"]
+    assert calls[0]["headers"]["x-api-key"] == API_KEY
+    assert calls[0]["params"] == {"limit": providers.MODEL_LIST_PAGE_SIZE}
+
+
+def test_openai_lists_newest_text_models_and_drops_the_rest(list_reply_with):
+    list_reply_with(
+        {
+            "data": [
+                {"id": "gpt-old", "created": 100},
+                {"id": "gpt-6-luna", "created": 300},
+                {"id": "text-embedding-3-small", "created": 400},
+                {"id": "whisper-1", "created": 500},
+                {"id": "gpt-image-2", "created": 600},
+                {"id": "ft:gpt-6:acme:custom", "created": 700},
+                {"id": "gpt-shutdown", "created": 800, "shutdown_date": "2026-10-23"},
+                {"id": "gpt-6.1-sol", "created": 200, "shutdown_date": None},
+            ]
+        }
+    )
+
+    assert providers.list_models("openai", API_KEY) == ["gpt-6-luna", "gpt-6.1-sol", "gpt-old"]
+
+
+def test_openai_caps_the_list_at_the_recent_limit(list_reply_with):
+    list_reply_with({"data": [{"id": f"gpt-{index}", "created": index} for index in range(30)]})
+
+    models = providers.list_models("openai", API_KEY)
+
+    assert len(models) == providers.MAX_RECENT_MODELS
+    assert models[0] == "gpt-29"
+
+
+def test_list_models_rejected_key_maps_to_400(monkeypatch):
+    monkeypatch.setattr(httpx, "get", lambda url, **kwargs: FakeResponse(401))
+
+    with pytest.raises(HTTPException) as error:
+        providers.list_models("openai", API_KEY)
+
+    assert error.value.detail == providers.KEY_REJECTED_MESSAGE
