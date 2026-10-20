@@ -14,24 +14,18 @@ import logging
 from datetime import datetime, timezone
 from email.message import EmailMessage
 
-from cryptography.fernet import Fernet
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from googleapiclient.discovery import build
 
 from core.config import settings
 from services.database import supabase
+from services.secret_encryption import decrypt_secret, encrypt_secret
 
 logger = logging.getLogger(__name__)
 
 GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send"
 TOKEN_URI = "https://oauth2.googleapis.com/token"
-
-
-def _fernet() -> Fernet:
-    if not settings.TOKEN_ENC_KEY:
-        raise RuntimeError("TOKEN_ENC_KEY not configured")
-    return Fernet(settings.TOKEN_ENC_KEY.encode())
 
 
 class GmailService:
@@ -44,7 +38,7 @@ class GmailService:
         email: str | None = None,
         scopes: str | None = GMAIL_SEND_SCOPE,
     ) -> None:
-        enc = _fernet().encrypt(refresh_token.encode()).decode()
+        enc = encrypt_secret(refresh_token)
         row = {
             "user_id": user_id,
             "provider": "google",
@@ -98,7 +92,7 @@ class GmailService:
             raise RuntimeError("No connected Google account")
         if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
             raise RuntimeError("GOOGLE_CLIENT_ID/SECRET not configured")
-        refresh_token = _fernet().decrypt(acct["refresh_token_encrypted"].encode()).decode()
+        refresh_token = decrypt_secret(acct["refresh_token_encrypted"])
         # Do NOT pass scopes here: sending `scope` on a refresh makes Google
         # return invalid_scope. Refresh uses whatever scopes were granted.
         creds = Credentials(

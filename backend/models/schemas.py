@@ -1,6 +1,11 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Literal, Optional
+
+MAX_COMPOSE_PROMPT_LENGTH = 1000
+MODEL_ID_PATTERN = r"^[A-Za-z0-9._:-]{1,100}$"
+MIN_API_KEY_LENGTH = 8
+MAX_API_KEY_LENGTH = 512
 
 
 class FollowUpStrategy(BaseModel):
@@ -20,10 +25,24 @@ class ReminderInput(BaseModel):
 
 
 class ComposeRequest(BaseModel):
-    """Turn a natural-language prompt into a full approval automation (Gemini)."""
+    """Turn a natural-language prompt into a full approval automation."""
 
-    prompt: str
-    now: str | None = None  # client ISO; origin for relative scheduling (default: server now)
+    prompt: str = Field(max_length=MAX_COMPOSE_PROMPT_LENGTH)
+    now: str | None = Field(default=None, max_length=64)  # client ISO; origin for relative scheduling (default: server now)
+
+
+class AiSettingsRequest(BaseModel):
+    """Bring-your-own-key AI provider settings."""
+
+    provider: Literal["gemini", "anthropic", "openai"]
+    model: str = Field(pattern=MODEL_ID_PATTERN)
+    api_key: str = Field(min_length=MIN_API_KEY_LENGTH, max_length=MAX_API_KEY_LENGTH)
+
+
+class AiSettingsResponse(BaseModel):
+    configured: bool = False
+    provider: str | None = None
+    model: str | None = None
 
 
 class ComposeResponse(BaseModel):

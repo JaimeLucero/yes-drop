@@ -188,7 +188,47 @@ export interface ComposeResult {
   reminders: Reminder[]
 }
 
-/** Compose a full approval automation from a natural-language prompt (Gemini). */
+export type AiProvider = 'gemini' | 'anthropic' | 'openai'
+
+export interface AiSettings {
+  configured: boolean
+  provider: AiProvider | null
+  model: string | null
+}
+
+async function authorizedAiSettingsRequest(method: 'GET' | 'PUT' | 'DELETE', body?: object): Promise<Response> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Not authenticated')
+  return fetch(`${BACKEND_URL}/api/ai/settings`, {
+    method,
+    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+}
+
+export async function fetchAiSettings(): Promise<AiSettings> {
+  const response = await authorizedAiSettingsRequest('GET')
+  if (!response.ok) throw new Error('Failed to load AI settings')
+  return response.json()
+}
+
+export async function saveAiSettings(settings: {
+  provider: AiProvider
+  model: string
+  api_key: string
+}): Promise<AiSettings> {
+  const response = await authorizedAiSettingsRequest('PUT', settings)
+  if (!response.ok) throw new Error('Could not save the AI key. Check the model name and key.')
+  return response.json()
+}
+
+export async function deleteAiSettings(): Promise<void> {
+  const response = await authorizedAiSettingsRequest('DELETE')
+  if (!response.ok) throw new Error('Could not remove the AI key')
+}
+
+/** Compose a full approval automation from a natural-language prompt, using the user's own AI key. */
 export async function composeAutomation(
   prompt: string,
   now?: string

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { AuthGuard } from '@/components/auth-guard'
 import { GmailAccountCard } from '@/components/connect-gmail'
+import { AiProviderCard } from '@/components/settings/ai-provider-card'
 
 export default function SettingsPage() {
   return (
@@ -28,6 +29,7 @@ export default function SettingsPage() {
             </p>
           </div>
           <GmailAccountCard />
+          <AiProviderCard />
         </main>
       </div>
     </AuthGuard>
